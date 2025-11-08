@@ -9,7 +9,8 @@
       "UnauthRoleName": "amplify-applms-dev-75740-unauthRole",
       "StackName": "amplify-applms-dev-75740",
       "StackId": "arn:aws:cloudformation:ap-south-1:348756883513:stack/amplify-applms-dev-75740/a0f68d40-bc55-11f0-9b4d-0accce77d997",
-      "AmplifyAppId": "d2kelxoxtavydi"
+      "AmplifyAppId": "d2kelxoxtavydi",
+      "APIGatewayAuthURL": "https://s3.amazonaws.com/amplify-applms-dev-75740-deployment/amplify-cfn-templates/api/APIGatewayAuthStack.json"
     },
     "categories": {
       "auth": {
@@ -17,6 +18,20 @@
       },
       "storage": {
         "s357d74f7c": {}
+      },
+      "function": {
+        "applms4426e4c8": {
+          "deploymentBucketName": "amplify-applms-dev-75740-deployment",
+          "s3Key": "amplify-builds/applms4426e4c8-597a43634843466a3547-build.zip"
+        },
+        "applms51482c72": {
+          "deploymentBucketName": "amplify-applms-dev-75740-deployment",
+          "s3Key": "amplify-builds/applms51482c72-73456d6f63664d63724b-build.zip"
+        }
+      },
+      "api": {
+        "applms": {},
+        "apie63ce51c": {}
       }
     }
   }

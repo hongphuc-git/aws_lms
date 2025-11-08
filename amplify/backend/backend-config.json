@@ -1,5 +1,19 @@
 {
   "api": {
+    "apie63ce51c": {
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "applms51482c72"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "API Gateway"
+    },
     "applms": {
       "dependsOn": [
         {
@@ -51,6 +65,52 @@
       },
       "providerPlugin": "awscloudformation",
       "service": "Cognito"
+    }
+  },
+  "function": {
+    "applms4426e4c8": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "applms51482c72": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    }
+  },
+  "parameters": {
+    "AMPLIFY_function_applms4426e4c8_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "applms4426e4c8"
+        }
+      ]
+    },
+    "AMPLIFY_function_applms4426e4c8_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "applms4426e4c8"
+        }
+      ]
+    },
+    "AMPLIFY_function_applms51482c72_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "applms51482c72"
+        }
+      ]
+    },
+    "AMPLIFY_function_applms51482c72_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "applms51482c72"
+        }
+      ]
     }
   },
   "storage": {

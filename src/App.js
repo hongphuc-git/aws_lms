@@ -1,6 +1,9 @@
 // App.jsx
 import React, { useState, useEffect } from 'react';
 
+import { Amplify } from 'aws-amplify';
+import outputs from './amplifyconfiguration';
+import AdminDashboard from './AdminDashboard';
 // --- AWS Amplify v6 Imports ---
 import { generateClient } from '@aws-amplify/api';
 import { uploadData } from '@aws-amplify/storage';
@@ -128,15 +131,9 @@ const InstructorDashboard = ({ user }) => {
 /* =================================================================
    3. ADMIN DASHBOARD COMPONENT (Quản trị viên)
    ================================================================= */
-const AdminDashboard = ({ user }) => {
-  return (
-    <View padding="large">
-      <Heading level={3}>Bảng điều khiển: Quản trị viên</Heading>
-      <Text>Chào mừng, Admin {user?.username || 'User'}!</Text>
-      <Button marginTop="medium">Quản lý người dùng</Button>
-    </View>
-  );
-};
+
+
+Amplify.configure(outputs);
 
 /* =================================================================
    4. MAIN APP COMPONENT (Đã được xác thực)
