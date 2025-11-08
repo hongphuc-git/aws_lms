@@ -1,0 +1,105 @@
+# Định nghĩa các vai trò. ADMIN sẽ được quản lý trong Cognito Groups
+enum Role {
+  STUDENT
+  INSTRUCTOR
+}
+
+# 1. Bảng User chính
+type User @model @auth(rules: [
+  {allow: owner, operations: [read, update]},
+  {allow: groups, groups: ["Admin"], operations: [read]}
+]) {
+  id: ID!
+  username: String!
+  email: String!
+  role: Role!
+  courses: [Course] @hasMany(indexName: "byInstructor", fields: ["id"])
+  enrollments: [Enrollment] @hasMany(indexName: "byStudent", fields: ["id"])
+}
+
+# 2. Bảng Khóa học
+type Course @model @auth(rules: [
+  {allow: private, provider: userPools, operations: [read]}, # ĐÃ SỬA LỖI: private (cho người đã đăng nhập)
+  {allow: groups, groups: ["Instructor"], operations: [create, update, delete, read]},
+  {allow: groups, groups: ["Admin"], operations: [read]}
+]) {
+  id: ID!
+  title: String!
+  description: String
+  instructorID: ID! @index(name: "byInstructor")
+  instructor: User @belongsTo(fields: ["instructorID"])
+  lectures: [Lecture] @hasMany(indexName: "byCourse", fields: ["id"])
+  quizzes: [Quiz] @hasMany(indexName: "byCourse", fields: ["id"])
+  enrollments: [Enrollment] @hasMany(indexName: "byCourse", fields: ["id"])
+}
+
+# 3. Bảng Bài giảng (File, Video)
+type Lecture @model @auth(rules: [
+  # Logic phân quyền xem bài giảng cần được custom chi tiết hơn
+  # Tạm thời: Instructor/Admin có thể quản lý, Student (owner của Enrollment) có thể đọc
+  {allow: groups, groups: ["Instructor", "Admin"], operations: [create, update, delete, read]},
+  {allow: private, provider: userPools, operations: [read]} # Cho phép user đã đăng nhập đọc
+]) {
+  id: ID!
+  title: String!
+  courseID: ID! @index(name: "byCourse")
+  course: Course @belongsTo(fields: ["courseID"])
+  # File được lưu trên S3
+  file: S3Object @auth(rules: [{allow: groups, groups: ["Instructor", "Admin"], operations: [read, create, update, delete]}, {allow: private, provider: userPools, operations: [read]}])
+}
+
+# 4. Bảng Quiz
+type Quiz @model @auth(rules: [
+  {allow: groups, groups: ["Instructor", "Admin"], operations: [create, update, delete, read]},
+  {allow: private, provider: userPools, operations: [read]} # Cho phép user đã đăng nhập đọc
+]) {
+  id: ID!
+  title: String!
+  courseID: ID! @index(name: "byCourse")
+  course: Course @belongsTo(fields: ["courseID"])
+  questions: [Question] @hasMany(indexName: "byQuiz", fields: ["id"])
+}
+
+# 5. Bảng Câu hỏi
+type Question @model @auth(rules: [
+  {allow: groups, groups: ["Instructor", "Admin"], operations: [create, update, delete, read]},
+  {allow: private, provider: userPools, operations: [read]}
+]) {
+  id: ID!
+  quizID: ID! @index(name: "byQuiz")
+  quiz: Quiz @belongsTo(fields: ["quizID"])
+  text: String!
+  options: [String!]!
+  correctAnswerIndex: Int @auth(rules: [{allow: groups, groups: ["Instructor", "Admin"]}]) # ĐÃ SỬA LỖI: Bỏ dấu ! Chỉ Admin/Instructor thấy đáp án
+}
+
+# 6. Bảng Đăng ký (Kết nối Student và Course)
+type Enrollment @model @auth(rules: [
+  {allow: owner, ownerField: "studentID", operations: [create, read, update, delete]},
+  {allow: groups, groups: ["Instructor", "Admin"], operations: [read]}
+]) {
+  id: ID!
+  studentID: ID! @index(name: "byStudent")
+  student: User @belongsTo(fields: ["studentID"])
+  courseID: ID! @index(name: "byCourse")
+  course: Course @belongsTo(fields: ["courseID"])
+}
+
+# 7. Bảng Nộp bài (Lưu điểm)
+type Submission @model @auth(rules: [
+  {allow: owner, ownerField: "studentID"},
+  {allow: groups, groups: ["Instructor"], operations: [read]}
+]) {
+  id: ID!
+  studentID: ID! @index(name: "byStudent")
+  quizID: ID!
+  score: Int!
+  answers: [Int!]!
+}
+
+# Kiểu S3Object để Amplify tự động liên kết với S3
+type S3Object {
+  bucket: String!
+  region: String!
+  key: String!
+}

@@ -1,0 +1,12 @@
+{
+  "AppSyncApiName": "applms",
+  "DynamoDBBillingMode": "PAY_PER_REQUEST",
+  "DynamoDBEnableServerSideEncryption": false,
+  "AuthCognitoUserPoolId": {
+    "Fn::GetAtt": [
+      "authapplms74700e61",
+      "Outputs.UserPoolId"
+    ]
+  },
+  "AuthModeLastUpdated": "2025-11-08T04:06:25.748Z"
+}
