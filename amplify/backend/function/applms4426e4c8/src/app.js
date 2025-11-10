@@ -1,4 +1,8 @@
-/* amplify/backend/function/applms4426e4c8/src/app.js */
+/* Amplify Params - DO NOT EDIT
+	AUTH_APPLMS74700E61_USERPOOLID
+	ENV
+	REGION
+Amplify Params - DO NOT EDIT *//* amplify/backend/function/applms4426e4c8/src/app.js */
 const express = require('express');
 const bodyParser = require('body-parser');
 const AWS = require('aws-sdk');

@@ -22,7 +22,7 @@
       "function": {
         "applms4426e4c8": {
           "deploymentBucketName": "amplify-applms-dev-75740-deployment",
-          "s3Key": "amplify-builds/applms4426e4c8-597a43634843466a3547-build.zip"
+          "s3Key": "amplify-builds/applms4426e4c8-344270537469726a666a-build.zip"
         },
         "applms51482c72": {
           "deploymentBucketName": "amplify-applms-dev-75740-deployment",

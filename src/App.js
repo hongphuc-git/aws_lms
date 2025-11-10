@@ -1,13 +1,13 @@
 // App.jsx
+import outputs from './amplifyconfiguration';
 import React, { useState, useEffect } from 'react';
 
-import { Amplify } from 'aws-amplify';
-import outputs from './amplifyconfiguration';
 import AdminDashboard from './AdminDashboard';
 // --- AWS Amplify v6 Imports ---
 import { generateClient } from '@aws-amplify/api';
 import { uploadData } from '@aws-amplify/storage';
 import { fetchAuthSession } from 'aws-amplify/auth';
+
 
 // --- Amplify UI ---
 import {
@@ -25,6 +25,10 @@ import '@aws-amplify/ui-react/styles.css';
 // --- GraphQL (Do Amplify Codegen tạo ra) ---
 import { listCourses } from './graphql/queries';
 // import { createLecture } from './graphql/mutations';
+
+
+import { Amplify } from 'aws-amplify';
+Amplify.configure(outputs);
 
 // Tạo API client v6 (thay cho API.graphql cũ)
 const client = generateClient();
@@ -131,9 +135,6 @@ const InstructorDashboard = ({ user }) => {
 /* =================================================================
    3. ADMIN DASHBOARD COMPONENT (Quản trị viên)
    ================================================================= */
-
-
-Amplify.configure(outputs);
 
 /* =================================================================
    4. MAIN APP COMPONENT (Đã được xác thực)

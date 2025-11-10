@@ -13,6 +13,13 @@
           "delete"
         ]
       }
+    },
+    "/listUsers": {
+      "name": "/listUsers",
+      "lambdaFunction": "applms4426e4c8",
+      "permissions": {
+        "setting": "open"
+      }
     }
   }
 }

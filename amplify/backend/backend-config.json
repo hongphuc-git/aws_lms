@@ -9,6 +9,14 @@
           ],
           "category": "function",
           "resourceName": "applms51482c72"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "applms4426e4c8"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -70,6 +78,15 @@
   "function": {
     "applms4426e4c8": {
       "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "UserPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "applms74700e61"
+        }
+      ],
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },

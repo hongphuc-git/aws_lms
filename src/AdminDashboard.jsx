@@ -1,223 +1,219 @@
-// src/AdminDashboard.jsx
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
-  View, Heading, Text, Flex, Button, Badge, Loader,
+  View, Heading, Text, Flex, Button, Loader,
   Table, TableHead, TableRow, TableCell, TableBody,
   Card, Input, SelectField, ToggleButtonGroup, ToggleButton
 } from '@aws-amplify/ui-react';
-import { generateClient } from '@aws-amplify/api';
+import { generateClient, get, post } from '@aws-amplify/api';
 import { fetchAuthSession } from 'aws-amplify/auth';
-
-// GraphQL
 import { listCourses } from './graphql/queries';
-import { createCourse /* , updateCourse, deleteCourse */ } from './graphql/mutations';
+import { createCourse } from './graphql/mutations';
 
-const client = generateClient();
+const API_NAME = 'apie63ce51c';
 const ROLES = ['Admin', 'Instructor', 'Student'];
-// 🔧 Đổi apiName theo amplifyconfiguration của bạn:
-const REST_API_NAME = 'apie63ce51c';
 
-/* -------------------------- Helpers --------------------------- */
+// ----------------------- Helpers -------------------------
 async function authHeaders() {
   const { tokens } = await fetchAuthSession();
-  const idToken = tokens?.idToken?.toString() ?? '';
-  return {
-    Authorization: idToken,
-    'Content-Type': 'application/json'
-  };
+  return { Authorization: tokens?.idToken?.toString() ?? '' };
 }
 
-// Chuẩn hoá mọi kiểu Groups về mảng tên nhóm dạng string
+const getUsername = (u) => u?.Username ?? u?.username ?? u?.UserName ?? '';
+const getAttrs = (u) => (Array.isArray(u?.Attributes) ? u.Attributes : []);
+const getEmailFromAttributes = (attrs = []) => {
+  const a = attrs.find(x => x?.Name === 'email');
+  return a?.Value || 'N/A';
+};
 const toGroupNames = (groups) => {
   if (!groups) return [];
   if (Array.isArray(groups)) {
     if (typeof groups[0] === 'string') return groups;
-    if (groups[0] && typeof groups[0] === 'object') {
-      return groups
-        .map(g => g?.GroupName || g?.groupName || g?.name)
-        .filter(Boolean);
-    }
+    if (typeof groups[0] === 'object') return groups.map(g => g?.GroupName).filter(Boolean);
   }
-  if (typeof groups === 'string') return [groups];
   return [];
 };
-
-// Suy ra vai trò "chính" theo ưu tiên
-const pickPrimaryRole = (groupNames) => {
-  if (groupNames.includes('Admin')) return 'Admin';
-  if (groupNames.includes('Instructor')) return 'Instructor';
+const pickPrimaryRole = (groups) => {
+  if (groups.includes('Admin')) return 'Admin';
+  if (groups.includes('Instructor')) return 'Instructor';
   return 'Student';
 };
 
-function getEmail(attrs = []) {
-  const a = attrs.find(x => x?.Name === 'email');
-  return a?.Value || 'N/A';
+// --------------------- Course Form ------------------------
+function CourseForm({ onCreateCourse, creatingCourse, currentUser }) {
+  const [form, setForm] = useState({
+    title: '',
+    description: '',
+    // IMPORTANT: schema cần instructorID, không phải instructorUsername
+    instructorID: currentUser?.id || '' // nếu bạn không có id ở prop user, để trống và nhập tay
+  });
+
+  const handleChange = (field, value) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onCreateCourse(form, resetForm);
+  };
+
+  const resetForm = () => {
+    setForm({
+      title: '',
+      description: '',
+      instructorID: currentUser?.id || ''
+    });
+  };
+
+  return (
+    <Card variation="outlined" padding="medium" marginBottom="medium">
+      <Heading level={5}>Tạo khoá học mới</Heading>
+      <form onSubmit={handleSubmit}>
+        <Flex direction="column" gap="small" marginTop="small">
+          <Input
+            placeholder="Tiêu đề *"
+            value={form.title}
+            onChange={(e) => handleChange('title', e.target.value)}
+            required
+          />
+          <Input
+            placeholder="Mô tả"
+            value={form.description}
+            onChange={(e) => handleChange('description', e.target.value)}
+          />
+          <Input
+            placeholder="Giảng viên (instructorID theo schema) *"
+            value={form.instructorID}
+            onChange={(e) => handleChange('instructorID', e.target.value)}
+            required
+          />
+          <Flex gap="small">
+            <Button type="submit" isLoading={creatingCourse}>Tạo khoá</Button>
+            <Button type="button" variation="link" onClick={resetForm}>
+              Xoá form
+            </Button>
+          </Flex>
+        </Flex>
+      </form>
+    </Card>
+  );
 }
 
-/* ======================= Main Component ======================= */
+// --------------------- Main Component ---------------------
 export default function AdminDashboard({ user }) {
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'users' | 'courses'
-
-  // Users state
+  const [client] = useState(() => generateClient());
+  const [activeTab, setActiveTab] = useState('overview');
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
-  const [roleDraft, setRoleDraft] = useState({}); // { username: 'Role' }
+  const [roleDraft, setRoleDraft] = useState({});
   const [busyUserAction, setBusyUserAction] = useState(false);
-  const [lastUserError, setLastUserError] = useState('');
 
-  // Courses state
   const [courses, setCourses] = useState([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
-  const [newCourse, setNewCourse] = useState({ title: '', description: '', instructorUsername: '' });
   const [creatingCourse, setCreatingCourse] = useState(false);
 
-  /* ----------------------- Users: fetch ------------------------ */
-  const loadUsers = async () => {
+  // ---------------- Load Users -----------------
+  const loadUsers = useCallback(async () => {
     setLoadingUsers(true);
-    setLastUserError('');
     try {
       const headers = await authHeaders();
+      const op = get({ apiName: API_NAME, path: '/listUsers', options: { headers } });
+      const { body } = await op.response;
+      const raw = await body.json();
+      const users = raw?.users ?? [];
 
-      // 1) Lấy danh sách user
-      const res = await client.get({
-        apiName: REST_API_NAME,
-        path: '/listUsers',
-        options: { headers }
-      });
-
-      const rawUsers = (res?.data?.users ?? res?.data ?? []);
-      console.log('[AdminDashboard] listUsers raw:', res?.data);
-
-      if (!Array.isArray(rawUsers)) {
-        console.warn('[AdminDashboard] listUsers không trả mảng Users. Gán []');
-      }
-
-      // 2) Với mỗi user, gọi listGroupsForUser để lấy nhóm chính xác
-      const withGroups = await Promise.all(
-        (Array.isArray(rawUsers) ? rawUsers : []).map(async (u) => {
-          try {
-            const gr = await client.get({
-              apiName: REST_API_NAME,
-              path: '/listGroupsForUser',
-              // v6 dùng "queryParams"
-              options: {
-                headers,
-                queryParams: { username: u.Username }
-              }
-            });
-            const groupNames = toGroupNames(gr?.data?.Groups ?? gr?.data ?? u.Groups);
-            return {
-              ...u,
-              Attributes: Array.isArray(u.Attributes) ? u.Attributes : [],
-              Groups: groupNames,
-              currentRole: pickPrimaryRole(groupNames),
-            };
-          } catch (e) {
-            console.warn('[AdminDashboard] listGroupsForUser lỗi cho', u?.Username, e);
-            const groupNames = toGroupNames(u.Groups);
-            return {
-              ...u,
-              Attributes: Array.isArray(u.Attributes) ? u.Attributes : [],
-              Groups: groupNames,
-              currentRole: pickPrimaryRole(groupNames),
-            };
-          }
-        })
-      );
-
-      console.log('[AdminDashboard] users normalized:', withGroups);
-      setUsers(withGroups);
-    } catch (e) {
-      console.error('listUsers error:', e);
-      setLastUserError(e?.message || 'Lỗi lấy danh sách người dùng');
+      const enriched = await Promise.all(users.map(async (u) => {
+        const uname = getUsername(u);
+        try {
+          const op2 = get({
+            apiName: API_NAME,
+            path: '/listGroupsForUser',
+            options: { headers, queryParams: { username: uname } }
+          });
+          const { body: body2 } = await op2.response;
+          const gdata = await body2.json();
+          const groups = toGroupNames(gdata?.groups || []);
+          return { ...u, Username: uname, Groups: groups, currentRole: pickPrimaryRole(groups) };
+        } catch {
+          return { ...u, Username: uname, Groups: [], currentRole: 'Student' };
+        }
+      }));
+      setUsers(enriched);
+    } catch (err) {
+      console.error('listUsers error:', err);
       setUsers([]);
     } finally {
       setLoadingUsers(false);
     }
-  };
+  }, []);
 
-  /* ---------------------- Courses: fetch ----------------------- */
-  const loadCourses = async () => {
+  // ---------------- Load Courses -----------------
+  const loadCourses = useCallback(async () => {
     setLoadingCourses(true);
     try {
       const res = await client.graphql({ query: listCourses });
-      const items = res?.data?.listCourses?.items ?? [];
-      setCourses(items);
-    } catch (e) {
-      console.error('listCourses error:', e);
-      setCourses([]);
+      setCourses(res?.data?.listCourses?.items ?? []);
+    } catch (err) {
+      console.error('listCourses error:', err);
     } finally {
       setLoadingCourses(false);
     }
-  };
+  }, [client]);
 
   useEffect(() => {
-    // tải cả 2 bảng ngay khi mở dashboard
     loadUsers();
     loadCourses();
-  }, []);
+  }, [loadUsers, loadCourses]);
 
-  /* --------------------- Change user role ---------------------- */
-  const saveUserRole = async (u) => {
-    const newRole = roleDraft[u.Username] || u.currentRole || 'Student';
-    if (newRole === u.currentRole) return;
+  // ---------------- Create Course -----------------
+  const onCreateCourse = async (formData, resetForm) => {
+    const title = (formData?.title || '').trim();
+    if (!title) return alert('Nhập tiêu đề khoá học');
 
-    setBusyUserAction(true);
-    try {
-      const headers = await authHeaders();
-
-      // remove old (nếu khác Student)
-      if (u.currentRole && u.currentRole !== 'Student' && u.currentRole !== newRole) {
-        await client.post({
-          apiName: REST_API_NAME,
-          path: '/removeUserFromGroup',
-          options: { headers, body: { username: u.Username, groupName: u.currentRole } }
-        });
-      }
-
-      // add new
-      await client.post({
-        apiName: REST_API_NAME,
-        path: '/addUserToGroup',
-        options: { headers, body: { username: u.Username, groupName: newRole } }
-      });
-
-      await loadUsers();
-    } catch (e) {
-      console.error('saveUserRole error:', e);
-      alert('Không thể cập nhật vai trò. Xem CloudWatch logs của API.');
-    } finally {
-      setBusyUserAction(false);
-    }
-  };
-
-  /* ---------------------- Create a course ---------------------- */
-  const onCreateCourse = async (e) => {
-    e.preventDefault();
-    if (!newCourse.title?.trim()) return alert('Nhập tiêu đề khoá học');
+    const instructorID = (formData?.instructorID || '').trim();
+    if (!instructorID) return alert('Nhập instructorID (theo schema)');
 
     setCreatingCourse(true);
     try {
       const input = {
-        title: newCourse.title.trim(),
-        description: newCourse.description?.trim() || '',
-        instructorUsername: newCourse.instructorUsername?.trim() || user?.username || '',
+        title,
+        description: (formData?.description || '').trim() || undefined,
+        instructorID
       };
-      await client.graphql({
-        query: createCourse,
-        variables: { input }
-      });
-      setNewCourse({ title: '', description: '', instructorUsername: '' });
+      await client.graphql({ query: createCourse, variables: { input } });
       await loadCourses();
-    } catch (e) {
-      console.error('createCourse error:', e);
-      alert('Không tạo được khoá học. Kiểm tra schema & quyền.');
+      resetForm();
+    } catch (err) {
+      console.error('createCourse error:', err);
+      alert('Không tạo được khoá học.');
     } finally {
       setCreatingCourse(false);
     }
   };
 
-  /* ------------------------- Overview -------------------------- */
+  // ---------------- Save Role -----------------
+  const saveUserRole = async (u) => {
+    const uname = u?.Username || getUsername(u);
+    const newRole = roleDraft[uname] || u.currentRole;
+    if (!uname) return alert('Thiếu username');
+    if (newRole === u.currentRole) return;
+
+    setBusyUserAction(true);
+    try {
+      const headers = await authHeaders();
+      if (u.currentRole && u.currentRole !== 'Student' && u.currentRole !== newRole) {
+        await post({ apiName: API_NAME, path: '/removeUserFromGroup', options: { headers, body: { username: uname, groupName: u.currentRole } } }).response;
+      }
+      await post({ apiName: API_NAME, path: '/addUserToGroup', options: { headers, body: { username: uname, groupName: newRole } } }).response;
+      await loadUsers();
+      alert(`Đã cập nhật ${uname} → ${newRole}`);
+    } catch (err) {
+      console.error('saveUserRole error:', err);
+    } finally {
+      setBusyUserAction(false);
+    }
+  };
+
+  // ---------------- Totals -----------------
   const totals = useMemo(() => {
     let admin = 0, instructor = 0, student = 0;
     users.forEach(u => {
@@ -226,51 +222,34 @@ export default function AdminDashboard({ user }) {
       else if (g.includes('Instructor')) instructor++;
       else student++;
     });
-    return {
-      users: users.length,
-      courses: courses.length,
-      Admin: admin,
-      Instructor: instructor,
-      Student: student,
-    };
+    return { users: users.length, courses: courses.length, Admin: admin, Instructor: instructor, Student: student };
   }, [users, courses]);
 
-  /* --------------------------- UI ------------------------------ */
-  const RoleSelector = ({ u }) => {
-    const currentRole = u.currentRole || 'Student';
-    return (
-      <SelectField
-        labelHidden
-        defaultValue={currentRole}
-        onChange={(e) => setRoleDraft(prev => ({ ...prev, [u.Username]: e.target.value }))}
-      >
-        {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-      </SelectField>
-    );
-  };
+  // ---------------- UI -----------------
+  const RoleSelector = ({ u }) => (
+    <SelectField
+      labelHidden
+      defaultValue={u.currentRole}
+      onChange={(e) => setRoleDraft(prev => ({ ...prev, [u.Username]: e.target.value }))}
+    >
+      {ROLES.map(r => <option key={r}>{r}</option>)}
+    </SelectField>
+  );
 
   const UsersTab = () => (
     <View>
       <Flex justifyContent="space-between" alignItems="center" marginBottom="medium">
         <Heading level={4}>Người dùng</Heading>
-        <Flex alignItems="center" gap="small">
-          {lastUserError && <Badge variation="error">{lastUserError}</Badge>}
-          {busyUserAction && <Loader />}
-          <Button size="small" onClick={loadUsers} variation="link">Tải lại</Button>
-        </Flex>
+        {busyUserAction && <Loader />}
       </Flex>
-
       {loadingUsers ? (
         <Text>Đang tải người dùng…</Text>
-      ) : users.length === 0 ? (
-        <Text>Không có người dùng nào (hoặc API trả rỗng). Mở Console để xem logs.</Text>
       ) : (
-        <Table caption="Danh sách người dùng" highlightOnHover>
+        <Table highlightOnHover>
           <TableHead>
             <TableRow>
               <TableCell as="th">Username</TableCell>
               <TableCell as="th">Email</TableCell>
-              <TableCell as="th">Trạng thái</TableCell>
               <TableCell as="th">Vai trò hiện tại</TableCell>
               <TableCell as="th">Chọn vai trò</TableCell>
               <TableCell as="th">Hành động</TableCell>
@@ -280,29 +259,11 @@ export default function AdminDashboard({ user }) {
             {users.map(u => (
               <TableRow key={u.Username}>
                 <TableCell>{u.Username}</TableCell>
-                <TableCell>{getEmail(u.Attributes)}</TableCell>
-                <TableCell>
-                  <Badge variation={u.Enabled ? 'success' : 'warning'}>
-                    {u.Enabled ? 'Enabled' : 'Disabled'}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge variation={
-                    u.currentRole === 'Admin' ? 'error' :
-                    u.currentRole === 'Instructor' ? 'warning' : 'info'
-                  }>
-                    {u.currentRole}
-                  </Badge>
-                </TableCell>
+                <TableCell>{getEmailFromAttributes(getAttrs(u))}</TableCell>
+                <TableCell>{u.currentRole}</TableCell>
                 <TableCell><RoleSelector u={u} /></TableCell>
                 <TableCell>
-                  <Button
-                    size="small"
-                    onClick={() => saveUserRole(u)}
-                    isDisabled={u.Username === user?.username || busyUserAction}
-                  >
-                    Lưu
-                  </Button>
+                  <Button size="small" onClick={() => saveUserRole(u)}>Lưu</Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -315,54 +276,22 @@ export default function AdminDashboard({ user }) {
   const CoursesTab = () => (
     <View>
       <Heading level={4} marginBottom="small">Khoá học</Heading>
-
-      {/* Form tạo khoá học */}
-      <Card variation="outlined" padding="medium" marginBottom="medium">
-        <Heading level={5}>Tạo khoá học mới</Heading>
-        <form onSubmit={onCreateCourse}>
-          <Flex direction="column" gap="small" marginTop="small">
-            <Input
-              placeholder="Tiêu đề *"
-              value={newCourse.title}
-              onChange={(e) => setNewCourse(c => ({ ...c, title: e.target.value }))}
-              required
-            />
-            <Input
-              placeholder="Mô tả"
-              value={newCourse.description}
-              onChange={(e) => setNewCourse(c => ({ ...c, description: e.target.value }))}
-            />
-            <Input
-              placeholder="Giảng viên (username) – mặc định là bạn"
-              value={newCourse.instructorUsername}
-              onChange={(e) => setNewCourse(c => ({ ...c, instructorUsername: e.target.value }))}
-            />
-            <Flex gap="small">
-              <Button type="submit" isLoading={creatingCourse}>Tạo khoá</Button>
-              <Button
-                type="button"
-                variation="link"
-                onClick={() => setNewCourse({ title: '', description: '', instructorUsername: '' })}
-              >
-                Xoá form
-              </Button>
-            </Flex>
-          </Flex>
-        </form>
-      </Card>
-
-      {/* Danh sách khoá học */}
+      <CourseForm
+        onCreateCourse={onCreateCourse}
+        creatingCourse={creatingCourse}
+        currentUser={user}
+      />
       {loadingCourses ? (
         <Text>Đang tải khoá học…</Text>
       ) : courses.length === 0 ? (
         <Text>Chưa có khoá học nào.</Text>
       ) : (
-        <Table caption="Danh sách khoá học" highlightOnHover>
+        <Table highlightOnHover>
           <TableHead>
             <TableRow>
               <TableCell as="th">Tiêu đề</TableCell>
               <TableCell as="th">Mô tả</TableCell>
-              <TableCell as="th">Giảng viên</TableCell>
+              <TableCell as="th">Instructor ID</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -370,7 +299,8 @@ export default function AdminDashboard({ user }) {
               <TableRow key={c.id}>
                 <TableCell>{c.title}</TableCell>
                 <TableCell>{c.description}</TableCell>
-                <TableCell>{c.instructorUsername || c?.instructor?.username || 'N/A'}</TableCell>
+                {/* Nếu listCourses có trả instructor { username }, bạn có thể dùng c.instructor?.username */}
+                <TableCell>{c.instructorID}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -400,11 +330,10 @@ export default function AdminDashboard({ user }) {
       <Heading level={3}>Bảng điều khiển: Quản trị viên</Heading>
       <Text>Chào mừng, {user?.username}.</Text>
 
-      {/* Tabs đơn giản bằng ToggleButtonGroup */}
       <Flex marginTop="medium" marginBottom="small" justifyContent="flex-start">
         <ToggleButtonGroup
           value={activeTab}
-          onValueChange={setActiveTab}
+          onChange={setActiveTab}
           isExclusive
           size="small"
         >
