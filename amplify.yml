@@ -4,12 +4,12 @@ frontend:
     preBuild:
       commands:
         - nvm use 18 || nvm install 18
-        - npm ci
+        - npm install     
     build:
       commands:
         - npm run build
   artifacts:
-    baseDirectory: build
+    baseDirectory: build   
     files:
       - '**/*'
   cache:
