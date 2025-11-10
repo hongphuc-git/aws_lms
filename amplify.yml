@@ -1,32 +1,25 @@
 version: 1
-frontend:
-  phases:
-    preBuild:
-      commands:
-        - nvm install 18
-        - nvm use 18
-        - node -v && npm -v
-        - echo "PWD=$(pwd)" && ls -la
-        # In vài thông tin package.json để xác nhận scripts/build
-        - node -e "const p=require('./package.json'); console.log('name:',p.name); console.log('build script:',p.scripts && p.scripts.build); console.log('deps:',Object.keys(p.dependencies||{}).length,'devDeps:',Object.keys(p.devDependencies||{}).length)"
-        # Ưu tiên ci, fallback install nếu ci lỗi (để không kẹt pipeline)
-        - if [ -f package-lock.json ]; then npm ci || npm install; else npm install; fi
-    build:
-      commands:
-        # đoán framework để log (không thay build script của bạn)
-        - node -e "const fs=require('fs'); const has=(f)=>fs.existsSync(f); const p=require('./package.json'); const s=(p.scripts||{}).build||''; const guess = has('vite.config.ts')||has('vite.config.js')?'vite': s.includes('react-scripts')?'cra': s.includes('next')?'next':'unknown'; console.log('framework_guess:',guess,' build_cmd:',s);"
-        - npm run build || (echo 'Build failed – dumping npm logs' && mkdir -p npm-logs && (ls -la ~/.npm/_logs || true) && (for f in ~/.npm/_logs/*-debug-*.log; do echo "----- $f -----"; cat "$f" | tee -a npm-logs/combined.log; done || true) && exit 1)
-        # Kiểm tra các thư mục output thường gặp
-        - echo 'Checking output dirs...'
-        - for d in build dist out; do echo "--- $d ---"; [ -d "$d" ] && (ls -la "$d" | head -n 50) || echo "missing: $d"; done
-  artifacts:
-    # Để chẩn đoán, gom cả 3 khả năng output
-    baseDirectory: .
-    files:
-      - 'build/**/*'
-      - 'dist/**/*'
-      - 'out/**/*'
-      - 'npm-logs/**/*'
-  cache:
-    paths:
-      - node_modules/**/*
+applications:
+  - appRoot: lms-app   # 👈 đổi thành thư mục chứa package.json của app nếu khác
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - nvm install 18
+            - nvm use 18
+            - node -v && npm -v
+            - echo "PWD=$(pwd)" && ls -la
+            # ưu tiên ci; nếu ci lỗi (vì lý do khác), fallback sang install để không kẹt pipeline
+            - if [ -f package-lock.json ]; then npm ci || npm install; else npm install; fi
+        build:
+          commands:
+            - npm run build || (echo "Build failed – dumping npm logs" && mkdir -p npm-logs && (ls -la ~/.npm/_logs || true) && (for f in ~/.npm/_logs/*-debug-*.log; do echo "----- $f -----"; cat "$f" | tee -a npm-logs/combined.log; done || true) && exit 1)
+            - echo "Checking output dirs..." && for d in build dist out; do echo "--- $d ---"; [ -d "$d" ] && (ls -la "$d" | head -n 50) || echo "missing: $d"; done
+      artifacts:
+        # CRA: build | Vite: dist | Next export: out  (đổi cho đúng)
+        baseDirectory: build
+        files:
+          - "**/*"
+      cache:
+        paths:
+          - node_modules/**/*
