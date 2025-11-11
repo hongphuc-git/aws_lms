@@ -17,19 +17,15 @@ async function authHeaders() {
   const { tokens } = await fetchAuthSession();
   return { Authorization: tokens?.idToken?.toString() ?? '' };
 }
-
 const getUsername = (u) => u?.Username ?? u?.username ?? u?.UserName ?? '';
-
-/** Lấy email ở mọi dạng Cognito trả về: u.email | Attributes[] | UserAttributes[] */
 const getEmail = (u) => {
-  if (u?.email) return u.email; // trường hợp backend đã map sẵn
+  if (u?.email) return u.email;
   const attrs = Array.isArray(u?.Attributes)
     ? u.Attributes
     : (Array.isArray(u?.UserAttributes) ? u.UserAttributes : []);
   const a = attrs.find(x => (x?.Name || x?.name) === 'email');
   return a?.Value || a?.value || 'N/A';
 };
-
 const toGroupNames = (groups) => {
   if (!groups) return [];
   if (Array.isArray(groups)) {
@@ -49,7 +45,6 @@ function CourseForm({ onCreateCourse, creatingCourse, currentUser }) {
   const [form, setForm] = useState({
     title: '',
     description: '',
-    // IMPORTANT: schema cần instructorID (User.id), không phải username
     instructorID: currentUser?.id || ''
   });
 
@@ -65,9 +60,14 @@ function CourseForm({ onCreateCourse, creatingCourse, currentUser }) {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onCreateCourse(form, resetForm);
+    try {
+      await onCreateCourse(form, resetForm);
+    } catch (error) {
+      console.error('Lỗi khi gửi form:', error);
+      alert(`Không thể tạo khóa học: ${error?.message || 'Lỗi không xác định'}`);
+    }
   };
 
   return (
@@ -108,6 +108,7 @@ function CourseForm({ onCreateCourse, creatingCourse, currentUser }) {
 export default function AdminDashboard({ user }) {
   const [client] = useState(() => generateClient());
   const [activeTab, setActiveTab] = useState('overview');
+
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [roleDraft, setRoleDraft] = useState({});
@@ -117,7 +118,7 @@ export default function AdminDashboard({ user }) {
   const [loadingCourses, setLoadingCourses] = useState(true);
   const [creatingCourse, setCreatingCourse] = useState(false);
 
-  /* ---------------- Load Users (Cognito REST) ----------------- */
+  /* ---------------- Load Users (Cognito via API GW) ----------------- */
   const loadUsers = useCallback(async () => {
     setLoadingUsers(true);
     try {
@@ -125,9 +126,9 @@ export default function AdminDashboard({ user }) {
       const op = get({ apiName: API_NAME, path: '/listUsers', options: { headers } });
       const { body } = await op.response;
       const raw = await body.json();
-      const users = raw?.users ?? [];
+      const list = raw?.users ?? [];
 
-      const enriched = await Promise.all(users.map(async (u) => {
+      const enriched = await Promise.all(list.map(async (u) => {
         const uname = getUsername(u);
         try {
           const op2 = get({
@@ -141,7 +142,7 @@ export default function AdminDashboard({ user }) {
           return {
             ...u,
             Username: uname,
-            Email: getEmail(u), // normalize email
+            Email: getEmail(u),
             Groups: groups,
             currentRole: pickPrimaryRole(groups)
           };
@@ -168,7 +169,7 @@ export default function AdminDashboard({ user }) {
   const loadCourses = useCallback(async () => {
     setLoadingCourses(true);
     try {
-      const res = await client.graphql({ query: listCourses });
+      const res = await client.graphql({ query: listCourses, authMode: 'userPool' });
       setCourses(res?.data?.listCourses?.items ?? []);
     } catch (err) {
       console.error('listCourses error:', err);
@@ -178,6 +179,12 @@ export default function AdminDashboard({ user }) {
   }, [client]);
 
   useEffect(() => {
+    (async () => {
+      const s = await fetchAuthSession();
+      const idt = s.tokens?.idToken;
+      console.log('Signed-in username:', idt?.payload?.['cognito:username']);
+      console.log('cognito:groups:', idt?.payload?.['cognito:groups'] ?? []);
+    })();
     loadUsers();
     loadCourses();
   }, [loadUsers, loadCourses]);
@@ -185,10 +192,12 @@ export default function AdminDashboard({ user }) {
   /* ---------------- Create Course ----------------- */
   const onCreateCourse = async (formData, resetForm) => {
     const title = (formData?.title || '').trim();
-    if (!title) return alert('Nhập tiêu đề khoá học');
-
     const instructorID = (formData?.instructorID || '').trim();
-    if (!instructorID) return alert('Nhập instructorID (User.id theo schema)');
+
+    if (!title || !instructorID) {
+      alert('Tiêu đề và InstructorID là bắt buộc');
+      return;
+    }
 
     setCreatingCourse(true);
     try {
@@ -198,33 +207,35 @@ export default function AdminDashboard({ user }) {
         instructorID
       };
 
-      // Gửi request GraphQL để tạo khóa học
+      const session = await fetchAuthSession();
+      const idt = session.tokens?.idToken;
+      console.log('Calling createCourse as:', idt?.payload?.['cognito:username']);
+      console.log('Groups:', idt?.payload?.['cognito:groups'] ?? []);
+      console.log('Sending data to GraphQL:', input);
+
       const result = await client.graphql({
         query: createCourse,
         variables: { input },
         authMode: 'userPool'
       });
 
-      console.log("createCourse result:", result);  // Log kết quả trả về từ API
+      console.log('GraphQL Response:', result);
 
-      if (result.errors && result.errors.length > 0) {
-        // Log chi tiết lỗi trả về từ API GraphQL
-        console.error("GraphQL errors:", result.errors);
-        alert(`Lỗi khi tạo khóa học: ${result.errors[0].message}`); // Thông báo lỗi
+      if (result.errors?.length) {
+        console.error('GraphQL Errors:', result.errors);
+        alert(`Lỗi khi tạo khóa học: ${result.errors[0].message}`);
         return;
       }
 
-      await loadCourses();  // Tải lại danh sách khóa học sau khi tạo
-      resetForm();  // Reset form
+      await loadCourses();
+      resetForm();
     } catch (err) {
-      console.error('createCourse error:', err);
-      alert('Không thể tạo khóa học.');
+      console.error('Unexpected error during createCourse:', err);
+      alert(err?.errors?.[0]?.message || err?.message || 'Không thể tạo khóa học. Vui lòng thử lại sau.');
     } finally {
       setCreatingCourse(false);
     }
   };
-
-
 
   /* ---------------- Save Role (Cognito Groups) ----------------- */
   const saveUserRole = async (u) => {
@@ -248,8 +259,9 @@ export default function AdminDashboard({ user }) {
         path: '/addUserToGroup',
         options: { headers, body: { username: uname, groupName: newRole } }
       }).response;
+
       await loadUsers();
-      window.alert(`✅ Cập nhật vai trò thành công: ${uname} → ${newRole}`);
+      window.alert(`✅ Cập nhật vai trò: ${uname} → ${newRole}\n(Đăng xuất & đăng nhập lại để token cập nhật nhóm)`);
     } catch (err) {
       console.error('saveUserRole error:', err);
     } finally {
@@ -278,23 +290,21 @@ export default function AdminDashboard({ user }) {
   /* ---------------- UI ----------------- */
   const RoleSelector = ({ u }) => {
     const uname = u.Username;
-    const value = roleDraft[uname] ?? u.currentRole; 
-
+    const value = roleDraft[uname] ?? u.currentRole;
     return (
       <SelectField
         labelHidden
-        value={value}                               
+        value={value}
         onChange={(e) =>
           setRoleDraft(prev => ({ ...prev, [uname]: e.target.value }))
         }
       >
         {ROLES.map(r => (
-          <option key={r} value={r}>{r}</option>   
+          <option key={r} value={r}>{r}</option>
         ))}
       </SelectField>
     );
   };
-
 
   const UsersTab = () => (
     <View>
@@ -359,7 +369,6 @@ export default function AdminDashboard({ user }) {
               <TableRow key={c.id}>
                 <TableCell>{c.title}</TableCell>
                 <TableCell>{c.description}</TableCell>
-                {/* Nếu listCourses có trả instructor { username }, có thể dùng c.instructor?.username */}
                 <TableCell>{c.instructorID}</TableCell>
               </TableRow>
             ))}

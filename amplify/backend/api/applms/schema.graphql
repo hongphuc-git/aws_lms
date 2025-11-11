@@ -2,12 +2,13 @@
 enum Role {
   STUDENT
   INSTRUCTOR
+  ADMIN
 }
 
 # 1. Bảng User chính
 type User @model @auth(rules: [
   {allow: owner, operations: [read, update]},
-  {allow: groups, groups: ["Admin"], operations: [read]}
+  {allow: groups, groups: ["Admin"], operations: [create,read,update,delete]}
 ]) {
   id: ID!
   username: String!
@@ -20,8 +21,8 @@ type User @model @auth(rules: [
 # 2. Bảng Khóa học
 type Course @model @auth(rules: [
   {allow: private, provider: userPools, operations: [read]}, # ĐÃ SỬA LỖI: private (cho người đã đăng nhập)
-  {allow: groups, groups: ["Instructor"], operations: [create, update, delete, read]},
-  {allow: groups, groups: ["Admin"], operations: [read]}
+  {allow: groups, groups: ["Instructor", "Admin"], operations: [create, update, delete, read]},
+  {allow: groups, groups: ["Student"], operations: [read]}
 ]) {
   id: ID!
   title: String!
