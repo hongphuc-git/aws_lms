@@ -3,9 +3,9 @@ import outputs from './amplifyconfiguration';
 import React, { useState, useEffect } from 'react';
 
 import AdminDashboard from './AdminDashboard';
+import InstructorDashboard from './InstructorDashboard';
 // --- AWS Amplify v6 Imports ---
 import { generateClient } from '@aws-amplify/api';
-import { uploadData } from '@aws-amplify/storage';
 import { fetchAuthSession } from 'aws-amplify/auth';
 
 
@@ -97,40 +97,6 @@ const StudentDashboard = ({ user }) => {
 /* =================================================================
    2. INSTRUCTOR DASHBOARD COMPONENT (Giảng viên)
    ================================================================= */
-const InstructorDashboard = ({ user }) => {
-  return (
-    <View padding="large">
-      <Heading level={3}>Bảng điều khiển: Giảng viên</Heading>
-      <Text>Chào mừng, Giảng viên {user?.username || 'User'}!</Text>
-      <Button marginTop="medium">Tạo khóa học mới</Button>
-
-      {/* Ví dụ: Upload file lên S3 bằng Amplify Storage v6 */}
-      <View marginTop="medium">
-        <input
-          type="file"
-          onChange={async (e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            try {
-              const result = await uploadData({
-                key: file.name,
-                data: file,
-                options: { contentType: file.type },
-              }).result; // .result để chờ upload hoàn tất (v6)
-              console.log('Tải lên thành công:', result?.key || result?.path);
-              alert('Tải lên thành công!');
-            } catch (error) {
-              console.error('Lỗi khi tải file:', error);
-              alert('Tải lên thất bại. Vui lòng thử lại!');
-            } finally {
-              e.target.value = '';
-            }
-          }}
-        />
-      </View>
-    </View>
-  );
-};
 
 /* =================================================================
    3. ADMIN DASHBOARD COMPONENT (Quản trị viên)
@@ -175,10 +141,14 @@ const AppContent = ({ signOut, user }) => {
 
   // Render dashboard theo role
   const renderDashboardByRole = () => {
-    if (!userRole) return <Text>Đang tải vai trò người dùng...</Text>;
-    if (userRole === 'Admin') return <AdminDashboard user={user} />;
-    if (userRole === 'Instructor') return <InstructorDashboard user={user} />;
-    return <StudentDashboard user={user} />;
+    if (!userRole) return <Text>Dang tai vai tro nguoi dung...</Text>;
+    if (userRole === 'Admin') {
+      return <AdminDashboard user={user} role={userRole} />;
+    }
+    if (userRole === 'Instructor') {
+      return <InstructorDashboard user={user} role={userRole} />;
+    }
+    return <StudentDashboard user={user} role={userRole} />;
   };
 
   return (

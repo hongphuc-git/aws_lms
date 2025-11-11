@@ -29,7 +29,7 @@ import {
   coursesByInstructorID,
   enrollmentsByCourseID
 } from './graphql/queries';
-import { createCourse } from './graphql/mutations';
+import { createCourse, createUser } from './graphql/mutations';
 
 const formatDate = (value) => {
   if (!value) return '—';
@@ -153,7 +153,7 @@ function ResourceUploader() {
   );
 }
 
-export default function InstructorDashboard({ user }) {
+export default function InstructorDashboard({ user, role = 'Instructor' }) {
   const [client] = useState(() => generateClient());
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -170,6 +170,37 @@ export default function InstructorDashboard({ user }) {
   const [creatingCourse, setCreatingCourse] = useState(false);
 
   const username = user?.username;
+
+  const normalizedRole = useMemo(() => {
+    if (typeof role === 'string') {
+      const upper = role.trim().toUpperCase();
+      if (['ADMIN', 'INSTRUCTOR', 'STUDENT'].includes(upper)) {
+        return upper;
+      }
+    }
+    return 'INSTRUCTOR';
+  }, [role]);
+  const derivedUserId = useMemo(() => {
+    return user?.attributes?.sub || user?.userId || username || '';
+  }, [user, username]);
+  const derivedEmail = useMemo(() => {
+    return (
+      user?.attributes?.email ||
+      user?.signInUserSession?.idToken?.payload?.email ||
+      ''
+    );
+  }, [user]);
+
+  const userFilter = useMemo(() => {
+    const clauses = [];
+    if (username) clauses.push({ username: { eq: username } });
+    if (derivedUserId) clauses.push({ id: { eq: derivedUserId } });
+    if (clauses.length === 0) return null;
+    if (clauses.length === 1) return clauses[0];
+    return { or: clauses };
+  }, [derivedUserId, username]);
+
+
 
   const loadEnrollmentsForCourses = useCallback(async (courseList) => {
     if (!courseList?.length) {
@@ -225,11 +256,89 @@ export default function InstructorDashboard({ user }) {
     }
   }, [client, loadEnrollmentsForCourses]);
 
+
+  const seedUserProfile = useCallback(async () => {
+    if (!derivedUserId) {
+      throw new Error('Kh?ng x?c ??nh ???c ID ng??i d?ng ?? kh?i t?o.');
+    }
+    const fallbackEmail =
+      derivedEmail || `no-email-${derivedUserId}@placeholder.local`;
+    const input = {
+      id: derivedUserId,
+      username: username || derivedUserId,
+      email: fallbackEmail,
+      role: normalizedRole
+    };
+    const result = await client.graphql({
+      query: createUser,
+      variables: { input },
+      authMode: 'userPool'
+    });
+    if (result.errors?.length) {
+      const conditional = result.errors.some(
+        (err) =>
+          err?.errorType === 'DynamoDB:ConditionalCheckFailedException' ||
+          err?.message?.includes('ConditionalCheckFailed')
+      );
+      if (conditional) {
+        const fallbackFilter =
+          userFilter ??
+          (derivedUserId ? { id: { eq: derivedUserId } } : undefined);
+        if (fallbackFilter) {
+          try {
+            const fallbackResult = await client.graphql({
+              query: listUsers,
+              variables: {
+                filter: fallbackFilter,
+                limit: 1
+              },
+              authMode: 'userPool'
+            });
+            const existing = fallbackResult.data?.listUsers?.items?.[0] ?? null;
+            if (existing) {
+              return existing;
+            }
+          } catch (fallbackErr) {
+            console.error('fallback listUsers error:', fallbackErr);
+          }
+        }
+        const error = new Error('USER_ALREADY_EXISTS');
+        error.details = result.errors;
+        throw error;
+      }
+      const unauthorized = result.errors.some(
+        (err) => err?.errorType === 'Unauthorized'
+      );
+      if (unauthorized) {
+        const error = new Error('USER_CREATE_UNAUTHORIZED');
+        error.details = result.errors;
+        throw error;
+      }
+      const error = new Error(result.errors[0].message || 'createUser failed.');
+      error.details = result.errors;
+      throw error;
+    }
+    const created = result.data?.createUser ?? null;
+    if (!created) {
+      throw new Error('createUser kh?ng tr? d? li?u.');
+    }
+    return created;
+  }, [
+    client,
+    derivedEmail,
+    derivedUserId,
+    normalizedRole,
+    userFilter,
+    username
+  ]);
+
+
+
   const fetchProfile = useCallback(async () => {
     if (!username) {
       setProfile(null);
       setLoadingProfile(false);
-      setProfileError('Không tìm thấy username trong session.');
+      setProfileError('Kh?ng t?m th?y username trong session.');
       return null;
     }
     setLoadingProfile(true);
@@ -238,27 +347,36 @@ export default function InstructorDashboard({ user }) {
       const result = await client.graphql({
         query: listUsers,
         variables: {
-          filter: { username: { eq: username } },
+          filter: userFilter ?? undefined,
           limit: 1
         },
         authMode: 'userPool'
       });
-      const record = result.data?.listUsers?.items?.[0] ?? null;
+      let record = result.data?.listUsers?.items?.[0] ?? null;
+      if (!record) {
+        try {
+          record = await seedUserProfile();
+        } catch (seedError) {
+          console.error('seed user profile error:', seedError);
+        }
+      }
       setProfile(record);
       if (!record) {
         setProfileError(
-          'Không tìm thấy bản ghi User. Vui lòng tạo User trong DynamoDB.'
+          'Kh?ng t?m th?y b?n ghi User v? kh?ng th? t? t?o. Vui l?ng li?n h? qu?n tr? vi?n.'
         );
       }
       return record;
     } catch (error) {
       console.error('fetch instructor profile error:', error);
-      setProfileError('Không thể tải thông tin giảng viên.');
+      setProfileError('Kh?ng th? t?i th?ng tin gi?ng vi?n.');
       return null;
     } finally {
       setLoadingProfile(false);
     }
-  }, [client, username]);
+  }, [client, seedUserProfile, userFilter, username]);
+
+
 
   useEffect(() => {
     let cancelled = false;
@@ -278,9 +396,11 @@ export default function InstructorDashboard({ user }) {
     await loadCoursesForInstructor(currentProfile.id);
   }, [fetchProfile, loadCoursesForInstructor, profile]);
 
+
   const handleCreateCourse = useCallback(async (formValues, resetForm) => {
-    if (!profile?.id) {
-      alert('Không có thông tin giảng viên để tạo khóa học.');
+    const currentProfile = profile || (await fetchProfile());
+    if (!currentProfile?.id) {
+      alert('Kh?ng c? th?ng tin gi?ng vi?n ?? t?o kho? h?c.');
       return;
     }
     setCreatingCourse(true);
@@ -288,7 +408,7 @@ export default function InstructorDashboard({ user }) {
       const input = {
         title: formValues.title.trim(),
         description: formValues.description.trim() || null,
-        instructorID: profile.id
+        instructorID: currentProfile.id
       };
       const result = await client.graphql({
         query: createCourse,
@@ -298,15 +418,15 @@ export default function InstructorDashboard({ user }) {
       if (result.errors?.length) {
         throw new Error(result.errors[0].message);
       }
-      await loadCoursesForInstructor(profile.id);
+      await loadCoursesForInstructor(currentProfile.id);
       resetForm?.();
     } catch (error) {
       console.error('create course error:', error);
-      alert(error?.message || 'Không thể tạo khóa học.');
+      alert(error?.message || 'Kh?ng th? t?o kho? h?c.');
     } finally {
       setCreatingCourse(false);
     }
-  }, [client, loadCoursesForInstructor, profile]);
+  }, [client, fetchProfile, loadCoursesForInstructor, profile]);
 
   const totalStudents = useMemo(() => {
     const ids = new Set();
