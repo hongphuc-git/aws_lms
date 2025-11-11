@@ -19,6 +19,10 @@ export const createUser = /* GraphQL */ `
         nextToken
         __typename
       }
+      enrollmentRequests {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       owner
@@ -44,6 +48,10 @@ export const updateUser = /* GraphQL */ `
         nextToken
         __typename
       }
+      enrollmentRequests {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       owner
@@ -66,6 +74,10 @@ export const deleteUser = /* GraphQL */ `
         __typename
       }
       enrollments {
+        nextToken
+        __typename
+      }
+      enrollmentRequests {
         nextToken
         __typename
       }
@@ -108,6 +120,10 @@ export const createCourse = /* GraphQL */ `
         nextToken
         __typename
       }
+      enrollmentRequests {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -146,6 +162,10 @@ export const updateCourse = /* GraphQL */ `
         nextToken
         __typename
       }
+      enrollmentRequests {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -181,6 +201,10 @@ export const deleteCourse = /* GraphQL */ `
         __typename
       }
       enrollments {
+        nextToken
+        __typename
+      }
+      enrollmentRequests {
         nextToken
         __typename
       }
@@ -533,6 +557,114 @@ export const deleteEnrollment = /* GraphQL */ `
         instructorID
         createdAt
         updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createEnrollmentRequest = /* GraphQL */ `
+  mutation CreateEnrollmentRequest(
+    $input: CreateEnrollmentRequestInput!
+    $condition: ModelEnrollmentRequestConditionInput
+  ) {
+    createEnrollmentRequest(input: $input, condition: $condition) {
+      id
+      courseID
+      studentID
+      status
+      message
+      course {
+        id
+        title
+        description
+        instructorID
+        createdAt
+        updatedAt
+        __typename
+      }
+      student {
+        id
+        username
+        email
+        role
+        createdAt
+        updatedAt
+        owner
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateEnrollmentRequest = /* GraphQL */ `
+  mutation UpdateEnrollmentRequest(
+    $input: UpdateEnrollmentRequestInput!
+    $condition: ModelEnrollmentRequestConditionInput
+  ) {
+    updateEnrollmentRequest(input: $input, condition: $condition) {
+      id
+      courseID
+      studentID
+      status
+      message
+      course {
+        id
+        title
+        description
+        instructorID
+        createdAt
+        updatedAt
+        __typename
+      }
+      student {
+        id
+        username
+        email
+        role
+        createdAt
+        updatedAt
+        owner
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteEnrollmentRequest = /* GraphQL */ `
+  mutation DeleteEnrollmentRequest(
+    $input: DeleteEnrollmentRequestInput!
+    $condition: ModelEnrollmentRequestConditionInput
+  ) {
+    deleteEnrollmentRequest(input: $input, condition: $condition) {
+      id
+      courseID
+      studentID
+      status
+      message
+      course {
+        id
+        title
+        description
+        instructorID
+        createdAt
+        updatedAt
+        __typename
+      }
+      student {
+        id
+        username
+        email
+        role
+        createdAt
+        updatedAt
+        owner
         __typename
       }
       createdAt

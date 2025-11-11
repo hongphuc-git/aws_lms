@@ -16,6 +16,7 @@ type User @model @auth(rules: [
   role: Role!
   courses: [Course] @hasMany(indexName: "byInstructor", fields: ["id"])
   enrollments: [Enrollment] @hasMany(indexName: "byStudent", fields: ["id"])
+  enrollmentRequests: [EnrollmentRequest] @hasMany(indexName: "byStudent", fields: ["id"])
 }
 
 # 2. Bảng Khóa học
@@ -32,6 +33,7 @@ type Course @model @auth(rules: [
   lectures: [Lecture] @hasMany(indexName: "byCourse", fields: ["id"])
   quizzes: [Quiz] @hasMany(indexName: "byCourse", fields: ["id"])
   enrollments: [Enrollment] @hasMany(indexName: "byCourse", fields: ["id"])
+  enrollmentRequests: [EnrollmentRequest] @hasMany(indexName: "byCourse", fields: ["id"])
 }
 
 # 3. Bảng Bài giảng (File, Video)

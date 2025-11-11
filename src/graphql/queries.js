@@ -16,6 +16,10 @@ export const getUser = /* GraphQL */ `
         nextToken
         __typename
       }
+      enrollmentRequests {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       owner
@@ -71,6 +75,10 @@ export const getCourse = /* GraphQL */ `
         __typename
       }
       enrollments {
+        nextToken
+        __typename
+      }
+      enrollmentRequests {
         nextToken
         __typename
       }
@@ -288,6 +296,65 @@ export const listEnrollments = /* GraphQL */ `
     }
   }
 `;
+export const getEnrollmentRequest = /* GraphQL */ `
+  query GetEnrollmentRequest($id: ID!) {
+    getEnrollmentRequest(id: $id) {
+      id
+      courseID
+      studentID
+      status
+      message
+      course {
+        id
+        title
+        description
+        instructorID
+        createdAt
+        updatedAt
+        __typename
+      }
+      student {
+        id
+        username
+        email
+        role
+        createdAt
+        updatedAt
+        owner
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listEnrollmentRequests = /* GraphQL */ `
+  query ListEnrollmentRequests(
+    $filter: ModelEnrollmentRequestFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listEnrollmentRequests(
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        courseID
+        studentID
+        status
+        message
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
 export const getSubmission = /* GraphQL */ `
   query GetSubmission($id: ID!) {
     getSubmission(id: $id) {
@@ -486,6 +553,66 @@ export const enrollmentsByCourseID = /* GraphQL */ `
         id
         studentID
         courseID
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const enrollmentRequestsByCourseID = /* GraphQL */ `
+  query EnrollmentRequestsByCourseID(
+    $courseID: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelEnrollmentRequestFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    enrollmentRequestsByCourseID(
+      courseID: $courseID
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        courseID
+        studentID
+        status
+        message
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const enrollmentRequestsByStudentID = /* GraphQL */ `
+  query EnrollmentRequestsByStudentID(
+    $studentID: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelEnrollmentRequestFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    enrollmentRequestsByStudentID(
+      studentID: $studentID
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        courseID
+        studentID
+        status
+        message
         createdAt
         updatedAt
         __typename
