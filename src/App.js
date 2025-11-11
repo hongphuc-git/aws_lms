@@ -1,6 +1,6 @@
 // App.jsx
 import outputs from './amplifyconfiguration';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 
 import AdminDashboard from './AdminDashboard';
 import InstructorDashboard from './InstructorDashboard';
@@ -19,6 +19,7 @@ import {
   Text,
   Flex,
   Badge,
+  Loader,
 } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
 
@@ -36,60 +37,143 @@ const client = generateClient();
 /* =================================================================
    1. STUDENT DASHBOARD COMPONENT (Học sinh)
    ================================================================= */
-const StudentDashboard = ({ user }) => {
+const StudentDashboard = ({ user, role = 'Student' }) => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let mounted = true;
-
-    const fetchCourses = async () => {
-      setLoading(true);
-      try {
-        const courseData = await client.graphql({ query: listCourses });
-        if (!mounted) return;
-        const items = courseData?.data?.listCourses?.items ?? [];
-        setCourses(items);
-      } catch (err) {
-        console.error('Lỗi khi tải khóa học:', err);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-
-    fetchCourses();
-    return () => {
-      mounted = false;
-    };
+  const fetchCourses = useCallback(async () => {
+    setLoading(true);
+    try {
+      const courseData = await client.graphql({ query: listCourses });
+      const items = courseData?.data?.listCourses?.items ?? [];
+      setCourses(items.filter(Boolean));
+    } catch (err) {
+      console.error('Lỗi khi tải khóa học:', err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchCourses();
+  }, [fetchCourses]);
+
+  const uniqueInstructors = useMemo(() => {
+    const names = new Set(
+      courses
+        .map((course) => course?.instructor?.username || course?.instructorID)
+        .filter(Boolean)
+    );
+    return names.size;
+  }, [courses]);
+
+  const heroMetrics = useMemo(
+    () => [
+      { label: 'Khoá học đang theo', value: courses.length },
+      { label: 'Giảng viên khác nhau', value: uniqueInstructors },
+      { label: 'Vai trò', value: role || 'Student' }
+    ],
+    [courses.length, role, uniqueInstructors]
+  );
+
+  const renderCourseList = () => {
+    if (loading) {
+      return (
+        <Flex alignItems="center" justifyContent="center" padding="large">
+          <Loader />
+          <Text marginLeft="small">Đang tải khóa học...</Text>
+        </Flex>
+      );
+    }
+
+    if (courses.length === 0) {
+      return (
+        <Card variation="outlined" padding="large">
+          <Heading level={5}>Chưa có khóa học</Heading>
+          <Text>Hãy liên hệ quản trị viên để được ghi danh vào các khóa học.</Text>
+        </Card>
+      );
+    }
+
+    return (
+      <Flex direction="column" gap="medium">
+        {courses.map((course) => (
+          <Card key={course.id} variation="outlined" padding="medium">
+            <Flex justifyContent="space-between" gap="medium" alignItems="flex-start">
+              <View>
+                <Heading level={5}>{course.title}</Heading>
+                <Text color="font.tertiary">
+                  {course.description || 'Khóa học chưa có mô tả.'}
+                </Text>
+                <Text fontSize="small" marginTop="small">
+                  Giảng viên:{' '}
+                  {course?.instructor?.username ||
+                    course?.instructorID ||
+                    'Đang cập nhật'}
+                </Text>
+              </View>
+              <View textAlign="right">
+                <Text fontSize="small" color="font.tertiary">
+                  Mã Instructor
+                </Text>
+                <Heading level={6}>{course?.instructorID || 'N/A'}</Heading>
+              </View>
+            </Flex>
+          </Card>
+        ))}
+      </Flex>
+    );
+  };
 
   return (
     <View padding="large">
-      <Heading level={3}>Bảng điều khiển: Học sinh</Heading>
-      <Text>Chào mừng, {user?.username || 'User'}!</Text>
-
-      <Heading level={4} marginTop="medium">
-        Các khóa học của bạn
-      </Heading>
-
-      {loading ? (
-        <Text>Đang tải khóa học...</Text>
-      ) : courses.length === 0 ? (
-        <Text>Chưa có khóa học nào.</Text>
-      ) : (
-        <Flex direction="column" gap="small">
-          {courses.map((course) => (
-            <Card key={course.id} variation="outlined" padding="medium">
-              <Heading level={5}>{course.title}</Heading>
-              <Text>{course.description}</Text>
-              <Text fontSize="small">
-                Giảng viên:{' '}
-                {course.instructor?.username ? course.instructor.username : 'N/A'}
+      <Card
+        variation="elevated"
+        padding="large"
+        backgroundColor="var(--amplify-colors-brand-primary-90)"
+        style={{ color: 'white' }}
+      >
+        <Heading level={4} color="white">
+          Chào mừng, {user?.username || 'Học viên'}
+        </Heading>
+        <Text color="white" opacity={0.9}>
+          Theo dõi tiến độ học tập và khám phá nội dung mới nhất trong chương trình.
+        </Text>
+        <Flex gap="large" wrap="wrap" marginTop="medium">
+          {heroMetrics.map((metric) => (
+            <View key={metric.label}>
+              <Text fontSize="small" color="white" opacity={0.8}>
+                {metric.label}
               </Text>
-            </Card>
+              <Heading level={3} margin="0">
+                {metric.value}
+              </Heading>
+            </View>
           ))}
         </Flex>
-      )}
+      </Card>
+
+      <Card variation="outlined" padding="large" marginTop="large">
+        <Flex justifyContent="space-between" alignItems="center" marginBottom="medium">
+          <View>
+            <Heading level={4} marginBottom="xxs">
+              Khoá học của bạn
+            </Heading>
+            <Text color="font.tertiary">
+              Danh sách khóa học đã được ghi danh dành riêng cho bạn.
+            </Text>
+          </View>
+          <Button
+            size="small"
+            onClick={fetchCourses}
+            isLoading={loading}
+            variation="primary"
+          >
+            Làm mới
+          </Button>
+        </Flex>
+        {renderCourseList()}
+      </Card>
     </View>
   );
 };

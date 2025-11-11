@@ -453,62 +453,110 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
     { label: 'Lượt ghi danh', value: allEnrollments.length }
   ]), [courses.length, totalStudents, allEnrollments.length]);
 
+  const heroHighlights = useMemo(
+    () => [
+      { label: 'Khoá học đang quản lý', value: courses.length },
+      { label: 'Học viên chủ động', value: totalStudents },
+      { label: 'Tổng lượt ghi danh', value: allEnrollments.length }
+    ],
+    [courses.length, totalStudents, allEnrollments.length]
+  );
+  const isBusy = loadingProfile || loadingCourses || loadingEnrollments;
+
   const OverviewTab = () => (
-    <View>
-      <Flex gap="medium" wrap="wrap" marginBottom="medium">
-        {overviewCards.map((card) => (
-          <Card key={card.label} variation="outlined" padding="large">
-            <Heading level={5}>{card.label}</Heading>
-            <Heading level={2}>{card.value}</Heading>
-          </Card>
-        ))}
-      </Flex>
+    <Flex direction="column" gap="medium">
+      <Card variation="outlined" padding="large">
+        <Flex gap="large" wrap="wrap">
+          {overviewCards.map((card) => (
+            <View key={card.label}>
+              <Text fontSize="small" color="font.tertiary">
+                {card.label}
+              </Text>
+              <Heading level={2} margin="0">
+                {card.value}
+              </Heading>
+            </View>
+          ))}
+        </Flex>
+      </Card>
       <ResourceUploader />
-    </View>
+    </Flex>
   );
 
   const CoursesTab = () => (
-    <View>
-      <Heading level={4} marginBottom="small">Khóa học</Heading>
+    <Flex direction="column" gap="medium">
       <CourseForm
         onCreate={handleCreateCourse}
         creating={creatingCourse}
-        disabled={!profile?.id}
+        disabled={!profile?.id || loadingProfile}
       />
-      {loadingCourses ? (
-        <Loader />
-      ) : courses.length === 0 ? (
-        <Text>Chưa có khóa học nào. Hãy tạo khóa học đầu tiên.</Text>
-      ) : (
-        <Table highlightOnHover>
-          <TableHead>
-            <TableRow>
-              <TableCell as="th">Tên khóa học</TableCell>
-              <TableCell as="th">Mô tả</TableCell>
-              <TableCell as="th">Học viên</TableCell>
-              <TableCell as="th">Ngày tạo</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {courses.map((course) => (
-              <TableRow key={course.id}>
-                <TableCell>{course.title}</TableCell>
-                <TableCell>{course.description || '—'}</TableCell>
-                <TableCell>{enrollmentMap[course.id]?.length ?? 0}</TableCell>
-                <TableCell>{formatDate(course.createdAt)}</TableCell>
+      <Card variation="outlined" padding="large">
+        <Flex justifyContent="space-between" alignItems="center" marginBottom="medium">
+          <Heading level={4} marginBottom="0">
+            Danh sách khóa học
+          </Heading>
+          <Button
+            size="small"
+            variation="link"
+            onClick={handleRefresh}
+            isLoading={loadingCourses}
+          >
+            Làm mới dữ liệu
+          </Button>
+        </Flex>
+        {loadingCourses ? (
+          <Flex alignItems="center" gap="small">
+            <Loader />
+            <Text>Đang tải danh sách khóa học...</Text>
+          </Flex>
+        ) : courses.length === 0 ? (
+          <Text>Chưa có khóa học nào. Hãy tạo khóa học đầu tiên.</Text>
+        ) : (
+          <Table highlightOnHover>
+            <TableHead>
+              <TableRow>
+                <TableCell as="th">Tên khóa học</TableCell>
+                <TableCell as="th">Mô tả</TableCell>
+                <TableCell as="th">Học viên</TableCell>
+                <TableCell as="th">Ngày tạo</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-    </View>
+            </TableHead>
+            <TableBody>
+              {courses.map((course) => (
+                <TableRow key={course.id}>
+                  <TableCell>{course.title}</TableCell>
+                  <TableCell>{course.description || '—'}</TableCell>
+                  <TableCell>{enrollmentMap[course.id]?.length ?? 0}</TableCell>
+                  <TableCell>{formatDate(course.createdAt)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </Card>
+    </Flex>
   );
 
   const StudentsTab = () => (
-    <View>
-      <Heading level={4} marginBottom="small">Học viên đã ghi danh</Heading>
+    <Card variation="outlined" padding="large">
+      <Flex justifyContent="space-between" alignItems="center" marginBottom="medium">
+        <Heading level={4} marginBottom="0">
+          Học viên đã ghi danh
+        </Heading>
+        <Button
+          size="small"
+          variation="link"
+          onClick={handleRefresh}
+          isLoading={loadingEnrollments}
+        >
+          Đồng bộ
+        </Button>
+      </Flex>
       {loadingEnrollments ? (
-        <Loader />
+        <Flex alignItems="center" gap="small">
+          <Loader />
+          <Text>Đang tải danh sách học viên...</Text>
+        </Flex>
       ) : allEnrollments.length === 0 ? (
         <Text>Chưa có học viên nào ghi danh vào các khóa của bạn.</Text>
       ) : (
@@ -531,52 +579,102 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
           </TableBody>
         </Table>
       )}
-    </View>
+    </Card>
   );
 
   return (
     <View padding="large">
-      <Flex justifyContent="space-between" alignItems="center">
-        <View>
-          <Heading level={3}>Bảng điều khiển: Giảng viên</Heading>
-          <Text>Xin chào, {username || 'Instructor'}.</Text>
-          {profile?.email && (
-            <Text fontSize="small">Email: {profile.email}</Text>
-          )}
-          {profileError && (
-            <Text color="red" fontSize="small">
-              {profileError}
+      <Card
+        variation="elevated"
+        padding="large"
+        backgroundColor="var(--amplify-colors-brand-primary-100)"
+        style={{ color: 'white' }}
+      >
+        <Flex
+          justifyContent="space-between"
+          alignItems="flex-start"
+          gap="medium"
+          wrap="wrap"
+        >
+          <View>
+            <Heading level={3} color="white" marginBottom="xxs">
+              Bảng điều khiển: Giảng viên
+            </Heading>
+            <Text color="white">
+              Xin chào, {username || 'Instructor'}.
             </Text>
-          )}
-        </View>
-        <Button onClick={handleRefresh} variation="primary">
-          Làm mới dữ liệu
-        </Button>
-      </Flex>
+            {profile?.email && (
+              <Text fontSize="small" color="white" opacity={0.8}>
+                Email: {profile.email}
+              </Text>
+            )}
+            {profileError && (
+              <Text color="var(--amplify-colors-red-40)" fontSize="small">
+                {profileError}
+              </Text>
+            )}
+          </View>
+          <Flex gap="small">
+            <Button
+              variation="link"
+              onClick={handleRefresh}
+              isLoading={isBusy}
+              style={{ color: 'white' }}
+            >
+              Làm mới dữ liệu
+            </Button>
+            <Button
+              variation="primary"
+              onClick={() => setActiveTab('courses')}
+            >
+              Tạo khóa học
+            </Button>
+          </Flex>
+        </Flex>
+        <Flex gap="large" wrap="wrap" marginTop="medium">
+          {heroHighlights.map((item) => (
+            <View key={item.label}>
+              <Text fontSize="small" color="white" opacity={0.8}>
+                {item.label}
+              </Text>
+              <Heading level={3} margin="0">
+                {item.value}
+              </Heading>
+            </View>
+          ))}
+        </Flex>
+      </Card>
 
-      {(loadingProfile || loadingCourses) && (
+      {isBusy && (
         <Flex marginTop="small" alignItems="center" gap="small">
           <Loader size="small" />
-          <Text>Đang tải dữ liệu giảng viên...</Text>
+          <Text>Đang đồng bộ dữ liệu mới nhất...</Text>
         </Flex>
       )}
 
-      <Flex marginTop="medium" marginBottom="small">
-        <ToggleButtonGroup
-          value={activeTab}
-          onChange={setActiveTab}
-          isExclusive
-          size="small"
-        >
-          <ToggleButton value="overview">Tổng quan</ToggleButton>
-          <ToggleButton value="courses">Khóa học</ToggleButton>
-          <ToggleButton value="students">Học viên</ToggleButton>
-        </ToggleButtonGroup>
-      </Flex>
+      <Card variation="outlined" padding="medium" marginTop="medium">
+        <Flex justifyContent="space-between" alignItems="center">
+          <Heading level={5} margin="0">
+            Khu vực quản lý
+          </Heading>
+          <ToggleButtonGroup
+            value={activeTab}
+            onChange={setActiveTab}
+            isExclusive
+            size="small"
+          >
+            <ToggleButton value="overview">Tổng quan</ToggleButton>
+            <ToggleButton value="courses">Khóa học</ToggleButton>
+            <ToggleButton value="students">Học viên</ToggleButton>
+          </ToggleButtonGroup>
+        </Flex>
+      </Card>
 
-      {activeTab === 'overview' && <OverviewTab />}
-      {activeTab === 'courses' && <CoursesTab />}
-      {activeTab === 'students' && <StudentsTab />}
+      <View marginTop="medium">
+        {activeTab === 'overview' && <OverviewTab />}
+        {activeTab === 'courses' && <CoursesTab />}
+        {activeTab === 'students' && <StudentsTab />}
+      </View>
     </View>
   );
 }
