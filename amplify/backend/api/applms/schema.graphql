@@ -86,6 +86,25 @@ type Enrollment @model @auth(rules: [
   course: Course @belongsTo(fields: ["courseID"])
 }
 
+enum EnrollmentRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+type EnrollmentRequest @model @auth(rules: [
+  {allow: owner, ownerField: "studentID", operations: [create, read, delete]},
+  {allow: groups, groups: ["Instructor", "Admin"], operations: [read, update, delete]}
+]) {
+  id: ID!
+  courseID: ID! @index(name: "byCourse")
+  studentID: ID! @index(name: "byStudent")
+  status: EnrollmentRequestStatus!
+  message: String
+  course: Course @belongsTo(fields: ["courseID"])
+  student: User @belongsTo(fields: ["studentID"])
+}
+
 # 7. Bảng Nộp bài (Lưu điểm)
 type Submission @model @auth(rules: [
   {allow: owner, ownerField: "studentID"},

@@ -8,6 +8,7 @@ import { generateClient, get, post } from '@aws-amplify/api';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { listCourses } from './graphql/queries';
 import { createCourse } from './graphql/mutations';
+import CourseDetail from './CourseDetail';
 
 const API_NAME = 'apie63ce51c';
 const ROLES = ['Admin', 'Instructor', 'Student'];
@@ -117,6 +118,7 @@ export default function AdminDashboard({ user }) {
   const [courses, setCourses] = useState([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
   const [creatingCourse, setCreatingCourse] = useState(false);
+  const [detailCourseId, setDetailCourseId] = useState('');
 
   /* ---------------- Load Users (Cognito via API GW) ----------------- */
   const loadUsers = useCallback(async () => {
@@ -453,6 +455,7 @@ export default function AdminDashboard({ user }) {
                 <TableCell as="th">Tiêu đề</TableCell>
                 <TableCell as="th">Mô tả</TableCell>
                 <TableCell as="th">Instructor ID</TableCell>
+                <TableCell as="th">Quản lý</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -461,6 +464,15 @@ export default function AdminDashboard({ user }) {
                   <TableCell>{c.title}</TableCell>
                   <TableCell>{c.description}</TableCell>
                   <TableCell>{c.instructorID}</TableCell>
+                  <TableCell>
+                    <Button
+                      size="small"
+                      variation="link"
+                      onClick={() => setDetailCourseId(c.id)}
+                    >
+                      Mở chi tiết
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -600,6 +612,13 @@ export default function AdminDashboard({ user }) {
         {activeTab === 'users' && <UsersTab />}
         {activeTab === 'courses' && <CoursesTab />}
       </View>
+      {detailCourseId && (
+        <CourseDetail
+          courseId={detailCourseId}
+          onClose={() => setDetailCourseId('')}
+          role="Admin"
+        />
+      )}
     </View>
   );
 }

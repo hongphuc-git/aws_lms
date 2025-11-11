@@ -30,6 +30,7 @@ import {
   enrollmentsByCourseID
 } from './graphql/queries';
 import { createCourse, createUser } from './graphql/mutations';
+import CourseDetail from './CourseDetail';
 
 const formatDate = (value) => {
   if (!value) return '—';
@@ -168,6 +169,7 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
   const [loadingEnrollments, setLoadingEnrollments] = useState(false);
 
   const [creatingCourse, setCreatingCourse] = useState(false);
+  const [detailCourseId, setDetailCourseId] = useState('');
 
   const username = user?.username;
 
@@ -519,6 +521,7 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
                 <TableCell as="th">Mô tả</TableCell>
                 <TableCell as="th">Học viên</TableCell>
                 <TableCell as="th">Ngày tạo</TableCell>
+                <TableCell as="th">Quản lý</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -528,6 +531,15 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
                   <TableCell>{course.description || '—'}</TableCell>
                   <TableCell>{enrollmentMap[course.id]?.length ?? 0}</TableCell>
                   <TableCell>{formatDate(course.createdAt)}</TableCell>
+                  <TableCell>
+                    <Button
+                      size="small"
+                      variation="link"
+                      onClick={() => setDetailCourseId(course.id)}
+                    >
+                      Mở chi tiết
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -675,6 +687,13 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
         {activeTab === 'courses' && <CoursesTab />}
         {activeTab === 'students' && <StudentsTab />}
       </View>
+      {detailCourseId && (
+        <CourseDetail
+          courseId={detailCourseId}
+          onClose={() => setDetailCourseId('')}
+          role={role}
+        />
+      )}
     </View>
   );
 }
