@@ -12,18 +12,24 @@ import { createCourse } from './graphql/mutations';
 const API_NAME = 'apie63ce51c';
 const ROLES = ['Admin', 'Instructor', 'Student'];
 
-// ----------------------- Helpers -------------------------
+/* ----------------------- Helpers ------------------------- */
 async function authHeaders() {
   const { tokens } = await fetchAuthSession();
   return { Authorization: tokens?.idToken?.toString() ?? '' };
 }
 
 const getUsername = (u) => u?.Username ?? u?.username ?? u?.UserName ?? '';
-const getAttrs = (u) => (Array.isArray(u?.Attributes) ? u.Attributes : []);
-const getEmailFromAttributes = (attrs = []) => {
-  const a = attrs.find(x => x?.Name === 'email');
-  return a?.Value || 'N/A';
+
+/** Lấy email ở mọi dạng Cognito trả về: u.email | Attributes[] | UserAttributes[] */
+const getEmail = (u) => {
+  if (u?.email) return u.email; // trường hợp backend đã map sẵn
+  const attrs = Array.isArray(u?.Attributes)
+    ? u.Attributes
+    : (Array.isArray(u?.UserAttributes) ? u.UserAttributes : []);
+  const a = attrs.find(x => (x?.Name || x?.name) === 'email');
+  return a?.Value || a?.value || 'N/A';
 };
+
 const toGroupNames = (groups) => {
   if (!groups) return [];
   if (Array.isArray(groups)) {
@@ -38,22 +44,17 @@ const pickPrimaryRole = (groups) => {
   return 'Student';
 };
 
-// --------------------- Course Form ------------------------
+/* --------------------- Course Form ------------------------ */
 function CourseForm({ onCreateCourse, creatingCourse, currentUser }) {
   const [form, setForm] = useState({
     title: '',
     description: '',
-    // IMPORTANT: schema cần instructorID, không phải instructorUsername
-    instructorID: currentUser?.id || '' // nếu bạn không có id ở prop user, để trống và nhập tay
+    // IMPORTANT: schema cần instructorID (User.id), không phải username
+    instructorID: currentUser?.id || ''
   });
 
   const handleChange = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onCreateCourse(form, resetForm);
   };
 
   const resetForm = () => {
@@ -62,6 +63,11 @@ function CourseForm({ onCreateCourse, creatingCourse, currentUser }) {
       description: '',
       instructorID: currentUser?.id || ''
     });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onCreateCourse(form, resetForm);
   };
 
   return (
@@ -81,7 +87,7 @@ function CourseForm({ onCreateCourse, creatingCourse, currentUser }) {
             onChange={(e) => handleChange('description', e.target.value)}
           />
           <Input
-            placeholder="Giảng viên (instructorID theo schema) *"
+            placeholder="Giảng viên (instructorID - User.id) *"
             value={form.instructorID}
             onChange={(e) => handleChange('instructorID', e.target.value)}
             required
@@ -98,7 +104,7 @@ function CourseForm({ onCreateCourse, creatingCourse, currentUser }) {
   );
 }
 
-// --------------------- Main Component ---------------------
+/* --------------------- Main Component --------------------- */
 export default function AdminDashboard({ user }) {
   const [client] = useState(() => generateClient());
   const [activeTab, setActiveTab] = useState('overview');
@@ -111,7 +117,7 @@ export default function AdminDashboard({ user }) {
   const [loadingCourses, setLoadingCourses] = useState(true);
   const [creatingCourse, setCreatingCourse] = useState(false);
 
-  // ---------------- Load Users -----------------
+  /* ---------------- Load Users (Cognito REST) ----------------- */
   const loadUsers = useCallback(async () => {
     setLoadingUsers(true);
     try {
@@ -132,9 +138,21 @@ export default function AdminDashboard({ user }) {
           const { body: body2 } = await op2.response;
           const gdata = await body2.json();
           const groups = toGroupNames(gdata?.groups || []);
-          return { ...u, Username: uname, Groups: groups, currentRole: pickPrimaryRole(groups) };
+          return {
+            ...u,
+            Username: uname,
+            Email: getEmail(u), // normalize email
+            Groups: groups,
+            currentRole: pickPrimaryRole(groups)
+          };
         } catch {
-          return { ...u, Username: uname, Groups: [], currentRole: 'Student' };
+          return {
+            ...u,
+            Username: uname,
+            Email: getEmail(u),
+            Groups: [],
+            currentRole: 'Student'
+          };
         }
       }));
       setUsers(enriched);
@@ -146,7 +164,7 @@ export default function AdminDashboard({ user }) {
     }
   }, []);
 
-  // ---------------- Load Courses -----------------
+  /* ---------------- Load Courses (GraphQL) ----------------- */
   const loadCourses = useCallback(async () => {
     setLoadingCourses(true);
     try {
@@ -164,13 +182,13 @@ export default function AdminDashboard({ user }) {
     loadCourses();
   }, [loadUsers, loadCourses]);
 
-  // ---------------- Create Course -----------------
+  /* ---------------- Create Course ----------------- */
   const onCreateCourse = async (formData, resetForm) => {
     const title = (formData?.title || '').trim();
     if (!title) return alert('Nhập tiêu đề khoá học');
 
     const instructorID = (formData?.instructorID || '').trim();
-    if (!instructorID) return alert('Nhập instructorID (theo schema)');
+    if (!instructorID) return alert('Nhập instructorID (User.id theo schema)');
 
     setCreatingCourse(true);
     try {
@@ -179,18 +197,36 @@ export default function AdminDashboard({ user }) {
         description: (formData?.description || '').trim() || undefined,
         instructorID
       };
-      await client.graphql({ query: createCourse, variables: { input } });
-      await loadCourses();
-      resetForm();
+
+      // Gửi request GraphQL để tạo khóa học
+      const result = await client.graphql({
+        query: createCourse,
+        variables: { input },
+        authMode: 'userPool'
+      });
+
+      console.log("createCourse result:", result);  // Log kết quả trả về từ API
+
+      if (result.errors && result.errors.length > 0) {
+        // Log chi tiết lỗi trả về từ API GraphQL
+        console.error("GraphQL errors:", result.errors);
+        alert(`Lỗi khi tạo khóa học: ${result.errors[0].message}`); // Thông báo lỗi
+        return;
+      }
+
+      await loadCourses();  // Tải lại danh sách khóa học sau khi tạo
+      resetForm();  // Reset form
     } catch (err) {
       console.error('createCourse error:', err);
-      alert('Không tạo được khoá học.');
+      alert('Không thể tạo khóa học.');
     } finally {
       setCreatingCourse(false);
     }
   };
 
-  // ---------------- Save Role -----------------
+
+
+  /* ---------------- Save Role (Cognito Groups) ----------------- */
   const saveUserRole = async (u) => {
     const uname = u?.Username || getUsername(u);
     const newRole = roleDraft[uname] || u.currentRole;
@@ -201,11 +237,19 @@ export default function AdminDashboard({ user }) {
     try {
       const headers = await authHeaders();
       if (u.currentRole && u.currentRole !== 'Student' && u.currentRole !== newRole) {
-        await post({ apiName: API_NAME, path: '/removeUserFromGroup', options: { headers, body: { username: uname, groupName: u.currentRole } } }).response;
+        await post({
+          apiName: API_NAME,
+          path: '/removeUserFromGroup',
+          options: { headers, body: { username: uname, groupName: u.currentRole } }
+        }).response;
       }
-      await post({ apiName: API_NAME, path: '/addUserToGroup', options: { headers, body: { username: uname, groupName: newRole } } }).response;
+      await post({
+        apiName: API_NAME,
+        path: '/addUserToGroup',
+        options: { headers, body: { username: uname, groupName: newRole } }
+      }).response;
       await loadUsers();
-      alert(`Đã cập nhật ${uname} → ${newRole}`);
+      window.alert(`✅ Cập nhật vai trò thành công: ${uname} → ${newRole}`);
     } catch (err) {
       console.error('saveUserRole error:', err);
     } finally {
@@ -213,7 +257,7 @@ export default function AdminDashboard({ user }) {
     }
   };
 
-  // ---------------- Totals -----------------
+  /* ---------------- Totals ----------------- */
   const totals = useMemo(() => {
     let admin = 0, instructor = 0, student = 0;
     users.forEach(u => {
@@ -222,19 +266,35 @@ export default function AdminDashboard({ user }) {
       else if (g.includes('Instructor')) instructor++;
       else student++;
     });
-    return { users: users.length, courses: courses.length, Admin: admin, Instructor: instructor, Student: student };
+    return {
+      users: users.length,
+      courses: courses.length,
+      Admin: admin,
+      Instructor: instructor,
+      Student: student
+    };
   }, [users, courses]);
 
-  // ---------------- UI -----------------
-  const RoleSelector = ({ u }) => (
-    <SelectField
-      labelHidden
-      defaultValue={u.currentRole}
-      onChange={(e) => setRoleDraft(prev => ({ ...prev, [u.Username]: e.target.value }))}
-    >
-      {ROLES.map(r => <option key={r}>{r}</option>)}
-    </SelectField>
-  );
+  /* ---------------- UI ----------------- */
+  const RoleSelector = ({ u }) => {
+    const uname = u.Username;
+    const value = roleDraft[uname] ?? u.currentRole; 
+
+    return (
+      <SelectField
+        labelHidden
+        value={value}                               
+        onChange={(e) =>
+          setRoleDraft(prev => ({ ...prev, [uname]: e.target.value }))
+        }
+      >
+        {ROLES.map(r => (
+          <option key={r} value={r}>{r}</option>   
+        ))}
+      </SelectField>
+    );
+  };
+
 
   const UsersTab = () => (
     <View>
@@ -259,7 +319,7 @@ export default function AdminDashboard({ user }) {
             {users.map(u => (
               <TableRow key={u.Username}>
                 <TableCell>{u.Username}</TableCell>
-                <TableCell>{getEmailFromAttributes(getAttrs(u))}</TableCell>
+                <TableCell>{u.Email}</TableCell>
                 <TableCell>{u.currentRole}</TableCell>
                 <TableCell><RoleSelector u={u} /></TableCell>
                 <TableCell>
@@ -299,7 +359,7 @@ export default function AdminDashboard({ user }) {
               <TableRow key={c.id}>
                 <TableCell>{c.title}</TableCell>
                 <TableCell>{c.description}</TableCell>
-                {/* Nếu listCourses có trả instructor { username }, bạn có thể dùng c.instructor?.username */}
+                {/* Nếu listCourses có trả instructor { username }, có thể dùng c.instructor?.username */}
                 <TableCell>{c.instructorID}</TableCell>
               </TableRow>
             ))}
