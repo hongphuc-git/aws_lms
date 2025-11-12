@@ -7,21 +7,21 @@ This repository contains a role-based Learning Management System built with Reac
 ```mermaid
 graph TD
   subgraph Client
-    SPA[React SPA + Amplify UI]
+    SPA["React SPA + Amplify UI"]
   end
 
-  SPA -->|Sign-in / token refresh| Cognito[(Amazon Cognito User Pool)]
-  SPA -->|GraphQL queries & mutations| AppSync[(AWS AppSync API)]
-  AppSync --> DynamoDB[DynamoDB tables (User, Course, Lecture, Quiz, ...)]
-  SPA -->|Upload or download lecture assets| S3[(Amazon S3 bucket)]
-  SPA -->|Admin REST actions| APIGW[(Amazon API Gateway)]
-  APIGW --> LambdaAdmin[Lambda: applms4426e4c8 (Cognito admin ops)]
-  APIGW --> LambdaExpress[Lambda: applms51482c72 (Express admin endpoints)]
+  SPA -->|Sign-in / token refresh| Cognito["Amazon Cognito User Pool"]
+  SPA -->|GraphQL queries & mutations| AppSync["AWS AppSync API"]
+  AppSync --> DynamoDB["DynamoDB tables (User, Course, Lecture, Quiz, ...)"]
+  SPA -->|Upload or download lecture assets| S3["Amazon S3 bucket"]
+  SPA -->|Admin REST actions| APIGW["Amazon API Gateway"]
+  APIGW --> LambdaAdmin["Lambda: applms4426e4c8 (Cognito admin ops)"]
+  APIGW --> LambdaExpress["Lambda: applms51482c72 (Express admin endpoints)"]
   LambdaAdmin --> Cognito
 
   subgraph Amplify Hosting
-    BuildPipeline[Amplify Build (Node 18 -> npm install -> npm run build)]
-    Hosting[(Amplify Hosting + CloudFront)]
+    BuildPipeline["Amplify Build (Node 18 -> npm install -> npm run build)"]
+    Hosting["Amplify Hosting + CloudFront"]
   end
 
   BuildPipeline --> Hosting --> SPA
@@ -37,6 +37,26 @@ graph TD
 - **Amazon API Gateway + AWS Lambda**: `apie63ce51c` proxies to two Lambdas that execute Cognito admin operations (list users, assign groups, and create accounts).
 
 ## Repository Layout
+
+```mermaid
+graph TD
+  Root["lms-app/"]
+  Root --> AmplifyDir["amplify/"]
+  Root --> PublicDir["public/"]
+  Root --> SrcDir["src/"]
+  Root --> ConfigFiles["project config (package.json, amplify.yml, README.md)"]
+
+  AmplifyDir --> Backend["backend/"]
+  Backend --> Api["api/applms (schema, resolvers)"]
+  Backend --> Auth["auth/ (Cognito)"]
+  Backend --> Function["function/ (Lambdas)"]
+  Backend --> Storage["storage/ (S3)"]
+
+  SrcDir --> AppEntry["App.js (role routing)"]
+  SrcDir --> Dashboards["Dashboards (*.jsx)"]
+  SrcDir --> GraphqlOps["graphql/ (codegen ops)"]
+  SrcDir --> AmplifyConfig["amplifyconfiguration.json"]
+```
 
 ```
 lms-app/
