@@ -1,26 +1,26 @@
 # LMS App
 
-This repository contains a role-based Learning Management System built with React 18 and AWS Amplify. The front end renders dedicated dashboards for Admin, Instructor, and Student personas, while AWS Amplify coordinates authentication (Cognito), data access (AppSync + DynamoDB), file storage (S3), and operational Lambdas exposed through API Gateway.
+This repository contains a role-based Learning Management System built with React 18 and AWS Amplify. The front end renders dedicated dashboards for Admin, Instructor, and Student personas, while Amplify coordinates authentication (Cognito), data access (AppSync + DynamoDB), file storage (S3), and operational Lambdas exposed through API Gateway.
 
 ## Architecture Overview
 
 ```mermaid
 graph TD
   subgraph Client
-    SPA["React SPA\nAmplify UI + Hooks"]
+    SPA[React SPA + Amplify UI]
   end
 
   SPA -->|Sign-in / token refresh| Cognito[(Amazon Cognito User Pool)]
   SPA -->|GraphQL queries & mutations| AppSync[(AWS AppSync API)]
-  AppSync --> DynamoDB["DynamoDB tables\n(User, Course, Lecture, Quiz, ...)"]
-  SPA -->|Upload/download lecture assets| S3[(Amazon S3 bucket)]
+  AppSync --> DynamoDB[DynamoDB tables (User, Course, Lecture, Quiz, ...)]
+  SPA -->|Upload or download lecture assets| S3[(Amazon S3 bucket)]
   SPA -->|Admin REST actions| APIGW[(Amazon API Gateway)]
-  APIGW --> LambdaAdmin["Lambda: applms4426e4c8\n(Cognito admin ops)"]
-  APIGW --> LambdaExpress["Lambda: applms51482c72\n(Express admin endpoints)"]
+  APIGW --> LambdaAdmin[Lambda: applms4426e4c8 (Cognito admin ops)]
+  APIGW --> LambdaExpress[Lambda: applms51482c72 (Express admin endpoints)]
   LambdaAdmin --> Cognito
 
   subgraph Amplify Hosting
-    BuildPipeline["Amplify Build\n(Node 18 -> npm install -> npm run build)"]
+    BuildPipeline[Amplify Build (Node 18 -> npm install -> npm run build)]
     Hosting[(Amplify Hosting + CloudFront)]
   end
 
@@ -30,7 +30,7 @@ graph TD
 ## AWS Infrastructure Components
 
 - **Amplify Hosting / Build**: defined in `amplify.yml`, runs Node 18, installs dependencies, builds the React app, and serves it through CloudFront.
-- **Amazon Cognito (auth/applms74700e61)**: email-based sign-up, optional MFA (OFF by default), user groups `Admin`, `Instructor`, `Student`.
+- **Amazon Cognito (auth/applms74700e61)**: email-based sign-up, optional MFA (OFF by default), user groups `Admin`, `Instructor`, and `Student`.
 - **AWS AppSync (api/applms)**: GraphQL API generated from `amplify/backend/api/applms/schema.graphql`, secured with the Cognito User Pool.
 - **Amazon DynamoDB**: tables for each `@model` type such as `User`, `Course`, `Lecture`, `Quiz`, `Question`, `Enrollment`, `EnrollmentRequest`, and `Submission`.
 - **Amazon S3 (storage/s357d74f7c)**: stores lecture files referenced through the `S3Object` type.
@@ -40,25 +40,24 @@ graph TD
 
 ```
 lms-app/
-|- amplify/
-|  |- backend/
-|  |  |- api/applms/        # GraphQL schema, resolvers, stacks
-|  |  |- auth/              # Cognito configuration
-|  |  |- function/          # Lambda sources (Admin Queries helpers)
-|  |  |- storage/           # S3 bucket configuration
-|  |  `- backend-config.json
-|  `- ...
-|- public/                  # CRA static assets
-|- src/
-|  |- App.js                # Chooses dashboard based on Cognito groups
-|  |- AdminDashboard.jsx / InstructorDashboard.jsx / StudentDashboard.jsx
-|  |- CourseDetail.jsx      # Course and lecture detail view
-|  |- graphql/              # Amplify codegen operations
-|  |- amplifyconfiguration.json / aws-exports.js
-|  `- index.js, styles, tests
-|- amplify.yml              # Amplify build specification
-|- package.json
-`- README.md
+├─ amplify/
+│  ├─ backend/
+│  │  ├─ api/applms/        # GraphQL schema, resolvers, stacks
+│  │  ├─ auth/              # Cognito configuration
+│  │  ├─ function/          # Lambda sources (Admin Queries helpers)
+│  │  └─ storage/           # S3 bucket configuration
+│  └─ backend-config.json
+├─ public/                  # CRA static assets
+├─ src/
+│  ├─ App.js                # Chooses dashboard based on Cognito groups
+│  ├─ AdminDashboard.jsx / InstructorDashboard.jsx / StudentDashboard.jsx
+│  ├─ CourseDetail.jsx      # Course and lecture detail view
+│  ├─ graphql/              # Amplify codegen operations
+│  ├─ amplifyconfiguration.json / aws-exports.js
+│  └─ index.js, styles, tests
+├─ amplify.yml              # Amplify build specification
+├─ package.json
+└─ README.md
 ```
 
 ## Data Model Snapshot
@@ -66,7 +65,7 @@ lms-app/
 - `User`: owner-restricted access, linked to `Course`, `Enrollment`, and `EnrollmentRequest` through `hasMany`.
 - `Course`: references instructor (`belongsTo User`), exposes `lectures`, `quizzes`, `enrollments`, and `enrollmentRequests`.
 - `Lecture`: metadata for course content stored in S3 (`S3Object`), CRUD allowed for Instructor/Admin groups.
-- `Quiz` + `Question`: quiz definitions with options array and hidden `correctAnswerIndex`.
+- `Quiz` + `Question`: quiz definitions with options arrays and hidden `correctAnswerIndex`.
 - `Enrollment` & `EnrollmentRequest`: connect students to courses with `PENDING | APPROVED | REJECTED` status.
 - `Submission`: captures quiz scores and student answers.
 
@@ -83,14 +82,14 @@ lms-app/
 1. Install dependencies: `npm install`.
 2. Sync Amplify backend config (for fresh clones): `amplify pull --appId <APP_ID> --envName <ENV>` to refresh `src/amplifyconfiguration.json` and the `amplify/` directory.
 3. (Optional) Add or switch environments: `amplify env add` / `amplify env checkout`.
-4. Start the dev server: `npm start` -> http://localhost:3000.
+4. Start the dev server: `npm start` -> `http://localhost:3000`.
 5. Sign in with a Cognito user that belongs to the proper group to see the corresponding dashboard.
 
 ### npm Scripts
 
 - `npm start`: CRA development server with hot reload.
 - `npm test`: Jest + Testing Library watch mode.
-- `npm run build`: Production bundle consumed by Amplify Hosting.
+- `npm run build`: production bundle consumed by Amplify Hosting.
 
 ## Operating the Amplify Backend
 
@@ -103,17 +102,17 @@ lms-app/
 | Add a new environment | `amplify env add` |
 | Update auth (for example enable MFA) | `amplify auth update` |
 
-The Amplify Console executes the steps in `amplify.yml` automatically (set Node 18, install packages, run `npm run build`, upload the `build/` directory).
+Amplify Console executes the steps in `amplify.yml` automatically (set Node 18, install packages, run `npm run build`, upload the `build/` directory).
 
 ## CloudWatch Monitoring & On-AWS Testing
 
-- **Lambda log groups**: every invocation of `applms4426e4c8` and `applms51482c72` is pushed to CloudWatch Logs under `/aws/lambda/<functionName>`. Use Log Insights queries (e.g., `fields @timestamp, @message | filter @message like /ERROR/`) to trace admin operations and capture stack traces in real time.
-- **AppSync resolver logging**: enable field-level logs and tracing in the AppSync console (Settings → Logging). Output streams to `/aws/appsync/apis/<apiId>` (or another log group you pick), so you can inspect VTL resolver input/output when debugging authorization or DynamoDB mapping issues.
-- **API Gateway stage logs & metrics**: turn on execution logging + access logging for stage(s) hosting the admin endpoints. Combine with CloudWatch metrics (`5XXError`, `Latency`, `IntegrationLatency`) and alarms to detect failures immediately.
-- **Amplify Console build/test logs**: every backend/frontend deployment keeps detailed build logs viewable in the Amplify console. Use the “Re-run build” and “Download logs” buttons to reproduce CI issues and test fixes directly in AWS.
-- **CloudWatch alarms & dashboards**: create alarms on Lambda `Errors`, AppSync `4XXError`/`5XXError`, DynamoDB `ThrottledRequests`, and S3 `4xxErrors` to get notified when regressions appear.
-- **In-console testing**: AppSync’s Query editor, API Gateway’s “Test” feature, and Lambda’s “Test event” runner allow you to execute live operations against the deployed backend without redeploying the front-end. This is ideal for verifying bug fixes directly in AWS or reproducing production-only issues.
-- **End-to-end testing in Amplify-hosted preview**: use Amplify’s preview branches to build the UI against the same backend, then correlate any frontend errors with the corresponding CloudWatch logs to close the loop quickly.
+- **Lambda log groups**: every invocation of `applms4426e4c8` and `applms51482c72` is pushed to CloudWatch Logs under `/aws/lambda/<functionName>`. Use Log Insights queries (for example, `fields @timestamp, @message | filter @message like /ERROR/`) to trace admin operations and capture stack traces.
+- **AppSync resolver logging**: enable field-level logs and tracing in the AppSync console (Settings -> Logging). Output streams to `/aws/appsync/apis/<apiId>` (or any log group you specify) so you can inspect resolver input/output when debugging authorization or mapping templates.
+- **API Gateway stage logs & metrics**: turn on execution logging plus access logging for the stages that front the admin endpoints. Combine with CloudWatch metrics (`5XXError`, `Latency`, `IntegrationLatency`) and alarms to detect failures immediately.
+- **Amplify Console build/test logs**: every backend/frontend deployment keeps detailed build logs. Use the "Re-run build" and "Download logs" buttons in the Amplify console to reproduce CI issues directly in AWS.
+- **CloudWatch alarms & dashboards**: create alarms on Lambda `Errors`, AppSync `4XXError`/`5XXError`, DynamoDB `ThrottledRequests`, and S3 `4xxErrors` to get notified as soon as regressions appear.
+- **In-console testing**: AppSync's query editor, API Gateway's "Test" button, and Lambda's "Test event" runner let you execute live operations against the deployed backend without rebuilding the front end.
+- **End-to-end testing in Amplify-hosted preview**: use Amplify preview branches to build the UI against the same backend, then correlate frontend issues with the corresponding CloudWatch logs.
 
 ## Admin REST Endpoints (API Gateway + Lambda)
 
@@ -123,9 +122,9 @@ These endpoints allow the Admin dashboard to manage Cognito groups without visit
 - `GET /listGroupsForUser?username=<user>`: inspect group memberships.
 - `POST /addUserToGroup`: body `{ "username": "...", "groupName": "Instructor" }`.
 - `POST /removeUserFromGroup`: body `{ "username": "...", "groupName": "Student" }`.
-- `POST /createUser`: body `{ "email": "...", "groupName": "Admin?" }`; sends a welcome email via Cognito.
+- `POST /createUser`: body `{ "email": "...", "groupName": "Admin?" }` (sends a welcome email via Cognito).
 
-Secure these routes with IAM, API keys, or Amplify environment rules to avoid exposing privileged operations publicly.
+Lock down these routes with IAM, API keys, or Amplify environment rules to avoid exposing privileged operations publicly.
 
 ## Recommended Development Workflow
 
@@ -140,7 +139,7 @@ Secure these routes with IAM, API keys, or Amplify environment rules to avoid ex
 - **Missing roles in the UI**: confirm the Cognito user is assigned to a group and that `fetchAuthSession` runs after sign-in.
 - **GraphQL 401/403 errors**: ensure `amplifyconfiguration.json` matches the current environment (endpoint, region, user pool id).
 - **S3 upload failures**: grant the authenticated role access to `Storage.put` or adjust auth rules on the `S3Object`.
-- **Amplify Console build failures**: double-check environment variables and secrets configured in the Amplify Console and verify Node.js version compatibility.
+- **Amplify Console build failures**: double-check environment variables and secrets configured in the Amplify console and verify Node.js version compatibility.
 
 ## References
 
