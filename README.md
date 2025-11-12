@@ -7,21 +7,21 @@ This repository contains a role-based Learning Management System built with Reac
 ```mermaid
 graph TD
   subgraph Client
-    SPA[React SPA<br/>Amplify UI + Hooks]
+    SPA["React SPA\nAmplify UI + Hooks"]
   end
 
   SPA -->|Sign-in / token refresh| Cognito[(Amazon Cognito User Pool)]
   SPA -->|GraphQL queries & mutations| AppSync[(AWS AppSync API)]
-  AppSync --> DynamoDB[(DynamoDB tables:<br/>User, Course, Lecture, Quiz, ...)]
+  AppSync --> DynamoDB["DynamoDB tables\n(User, Course, Lecture, Quiz, ...)"]
   SPA -->|Upload/download lecture assets| S3[(Amazon S3 bucket)]
-  SPA -->|Admin REST actions| APIGW[Amazon API Gateway]
-  APIGW --> LambdaAdmin[Lambda: applms4426e4c8<br/>(Cognito admin ops)]
-  APIGW --> LambdaExpress[Lambda: applms51482c72<br/>(Express admin endpoints)]
+  SPA -->|Admin REST actions| APIGW[(Amazon API Gateway)]
+  APIGW --> LambdaAdmin["Lambda: applms4426e4c8\n(Cognito admin ops)"]
+  APIGW --> LambdaExpress["Lambda: applms51482c72\n(Express admin endpoints)"]
   LambdaAdmin --> Cognito
 
   subgraph Amplify Hosting
-    BuildPipeline[Amplify Build<br/>(Node 18 -> npm install -> npm run build)]
-    Hosting[Amplify Hosting + CloudFront]
+    BuildPipeline["Amplify Build\n(Node 18 -> npm install -> npm run build)"]
+    Hosting[(Amplify Hosting + CloudFront)]
   end
 
   BuildPipeline --> Hosting --> SPA
@@ -104,6 +104,16 @@ lms-app/
 | Update auth (for example enable MFA) | `amplify auth update` |
 
 The Amplify Console executes the steps in `amplify.yml` automatically (set Node 18, install packages, run `npm run build`, upload the `build/` directory).
+
+## CloudWatch Monitoring & On-AWS Testing
+
+- **Lambda log groups**: every invocation of `applms4426e4c8` and `applms51482c72` is pushed to CloudWatch Logs under `/aws/lambda/<functionName>`. Use Log Insights queries (e.g., `fields @timestamp, @message | filter @message like /ERROR/`) to trace admin operations and capture stack traces in real time.
+- **AppSync resolver logging**: enable field-level logs and tracing in the AppSync console (Settings → Logging). Output streams to `/aws/appsync/apis/<apiId>` (or another log group you pick), so you can inspect VTL resolver input/output when debugging authorization or DynamoDB mapping issues.
+- **API Gateway stage logs & metrics**: turn on execution logging + access logging for stage(s) hosting the admin endpoints. Combine with CloudWatch metrics (`5XXError`, `Latency`, `IntegrationLatency`) and alarms to detect failures immediately.
+- **Amplify Console build/test logs**: every backend/frontend deployment keeps detailed build logs viewable in the Amplify console. Use the “Re-run build” and “Download logs” buttons to reproduce CI issues and test fixes directly in AWS.
+- **CloudWatch alarms & dashboards**: create alarms on Lambda `Errors`, AppSync `4XXError`/`5XXError`, DynamoDB `ThrottledRequests`, and S3 `4xxErrors` to get notified when regressions appear.
+- **In-console testing**: AppSync’s Query editor, API Gateway’s “Test” feature, and Lambda’s “Test event” runner allow you to execute live operations against the deployed backend without redeploying the front-end. This is ideal for verifying bug fixes directly in AWS or reproducing production-only issues.
+- **End-to-end testing in Amplify-hosted preview**: use Amplify’s preview branches to build the UI against the same backend, then correlate any frontend errors with the corresponding CloudWatch logs to close the loop quickly.
 
 ## Admin REST Endpoints (API Gateway + Lambda)
 
