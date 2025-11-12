@@ -1,70 +1,142 @@
-# Getting Started with Create React App
+# LMS App
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This repository contains a role-based Learning Management System built with React 18 and AWS Amplify. The front end renders dedicated dashboards for Admin, Instructor, and Student personas, while AWS Amplify coordinates authentication (Cognito), data access (AppSync + DynamoDB), file storage (S3), and operational Lambdas exposed through API Gateway.
 
-## Available Scripts
+## Architecture Overview
 
-In the project directory, you can run:
+```mermaid
+graph TD
+  subgraph Client
+    SPA[React SPA<br/>Amplify UI + Hooks]
+  end
 
-### `npm start`
+  SPA -->|Sign-in / token refresh| Cognito[(Amazon Cognito User Pool)]
+  SPA -->|GraphQL queries & mutations| AppSync[(AWS AppSync API)]
+  AppSync --> DynamoDB[(DynamoDB tables:<br/>User, Course, Lecture, Quiz, ...)]
+  SPA -->|Upload/download lecture assets| S3[(Amazon S3 bucket)]
+  SPA -->|Admin REST actions| APIGW[Amazon API Gateway]
+  APIGW --> LambdaAdmin[Lambda: applms4426e4c8<br/>(Cognito admin ops)]
+  APIGW --> LambdaExpress[Lambda: applms51482c72<br/>(Express admin endpoints)]
+  LambdaAdmin --> Cognito
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+  subgraph Amplify Hosting
+    BuildPipeline[Amplify Build<br/>(Node 18 -> npm install -> npm run build)]
+    Hosting[Amplify Hosting + CloudFront]
+  end
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+  BuildPipeline --> Hosting --> SPA
+```
 
-### `npm test`
+## AWS Infrastructure Components
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- **Amplify Hosting / Build**: defined in `amplify.yml`, runs Node 18, installs dependencies, builds the React app, and serves it through CloudFront.
+- **Amazon Cognito (auth/applms74700e61)**: email-based sign-up, optional MFA (OFF by default), user groups `Admin`, `Instructor`, `Student`.
+- **AWS AppSync (api/applms)**: GraphQL API generated from `amplify/backend/api/applms/schema.graphql`, secured with the Cognito User Pool.
+- **Amazon DynamoDB**: tables for each `@model` type such as `User`, `Course`, `Lecture`, `Quiz`, `Question`, `Enrollment`, `EnrollmentRequest`, and `Submission`.
+- **Amazon S3 (storage/s357d74f7c)**: stores lecture files referenced through the `S3Object` type.
+- **Amazon API Gateway + AWS Lambda**: `apie63ce51c` proxies to two Lambdas that execute Cognito admin operations (list users, assign groups, and create accounts).
 
-### `npm run build`
+## Repository Layout
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```
+lms-app/
+|- amplify/
+|  |- backend/
+|  |  |- api/applms/        # GraphQL schema, resolvers, stacks
+|  |  |- auth/              # Cognito configuration
+|  |  |- function/          # Lambda sources (Admin Queries helpers)
+|  |  |- storage/           # S3 bucket configuration
+|  |  `- backend-config.json
+|  `- ...
+|- public/                  # CRA static assets
+|- src/
+|  |- App.js                # Chooses dashboard based on Cognito groups
+|  |- AdminDashboard.jsx / InstructorDashboard.jsx / StudentDashboard.jsx
+|  |- CourseDetail.jsx      # Course and lecture detail view
+|  |- graphql/              # Amplify codegen operations
+|  |- amplifyconfiguration.json / aws-exports.js
+|  `- index.js, styles, tests
+|- amplify.yml              # Amplify build specification
+|- package.json
+`- README.md
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Data Model Snapshot
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+- `User`: owner-restricted access, linked to `Course`, `Enrollment`, and `EnrollmentRequest` through `hasMany`.
+- `Course`: references instructor (`belongsTo User`), exposes `lectures`, `quizzes`, `enrollments`, and `enrollmentRequests`.
+- `Lecture`: metadata for course content stored in S3 (`S3Object`), CRUD allowed for Instructor/Admin groups.
+- `Quiz` + `Question`: quiz definitions with options array and hidden `correctAnswerIndex`.
+- `Enrollment` & `EnrollmentRequest`: connect students to courses with `PENDING | APPROVED | REJECTED` status.
+- `Submission`: captures quiz scores and student answers.
 
-### `npm run eject`
+## Getting Started
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### Prerequisites
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+- Node.js 18 or newer (matches the Amplify build pipeline).
+- Amplify CLI v12+ (`npm install -g @aws-amplify/cli`).
+- AWS IAM credentials with permissions for AppSync, Cognito, DynamoDB, S3, Lambda, and CloudFormation.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### Local Setup
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+1. Install dependencies: `npm install`.
+2. Sync Amplify backend config (for fresh clones): `amplify pull --appId <APP_ID> --envName <ENV>` to refresh `src/amplifyconfiguration.json` and the `amplify/` directory.
+3. (Optional) Add or switch environments: `amplify env add` / `amplify env checkout`.
+4. Start the dev server: `npm start` -> http://localhost:3000.
+5. Sign in with a Cognito user that belongs to the proper group to see the corresponding dashboard.
 
-## Learn More
+### npm Scripts
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+- `npm start`: CRA development server with hot reload.
+- `npm test`: Jest + Testing Library watch mode.
+- `npm run build`: Production bundle consumed by Amplify Hosting.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Operating the Amplify Backend
 
-### Code Splitting
+| Task | Command |
+| --- | --- |
+| View resource status | `amplify status` |
+| Deploy backend changes | `amplify push` |
+| Publish frontend to Amplify Hosting | `amplify publish` |
+| Pull latest backend definitions | `amplify pull --appId <APP_ID> --envName <ENV>` |
+| Add a new environment | `amplify env add` |
+| Update auth (for example enable MFA) | `amplify auth update` |
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+The Amplify Console executes the steps in `amplify.yml` automatically (set Node 18, install packages, run `npm run build`, upload the `build/` directory).
 
-### Analyzing the Bundle Size
+## Admin REST Endpoints (API Gateway + Lambda)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+These endpoints allow the Admin dashboard to manage Cognito groups without visiting the AWS console:
 
-### Making a Progressive Web App
+- `GET /listUsers`: list Cognito users.
+- `GET /listGroupsForUser?username=<user>`: inspect group memberships.
+- `POST /addUserToGroup`: body `{ "username": "...", "groupName": "Instructor" }`.
+- `POST /removeUserFromGroup`: body `{ "username": "...", "groupName": "Student" }`.
+- `POST /createUser`: body `{ "email": "...", "groupName": "Admin?" }`; sends a welcome email via Cognito.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+Secure these routes with IAM, API keys, or Amplify environment rules to avoid exposing privileged operations publicly.
 
-### Advanced Configuration
+## Recommended Development Workflow
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+1. Model data in `amplify/backend/api/applms/schema.graphql`.
+2. Run `amplify push` to update CloudFormation stacks and DynamoDB tables.
+3. Generate updated operations (`amplify codegen` or the Amplify UI workflow) for the React app.
+4. Build or adjust dashboard components (`AdminDashboard.jsx`, `InstructorDashboard.jsx`, `StudentDashboard.jsx`) using the Amplify GraphQL helpers.
+5. Add tests for isolated logic (`npm test`) and verify role-specific rendering manually.
 
-### Deployment
+## Troubleshooting
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+- **Missing roles in the UI**: confirm the Cognito user is assigned to a group and that `fetchAuthSession` runs after sign-in.
+- **GraphQL 401/403 errors**: ensure `amplifyconfiguration.json` matches the current environment (endpoint, region, user pool id).
+- **S3 upload failures**: grant the authenticated role access to `Storage.put` or adjust auth rules on the `S3Object`.
+- **Amplify Console build failures**: double-check environment variables and secrets configured in the Amplify Console and verify Node.js version compatibility.
 
-### `npm run build` fails to minify
+## References
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- [AWS Amplify Documentation](https://docs.amplify.aws/)
+- [Amplify Admin UI](https://docs.amplify.aws/console/adminui/intro/)
+- [AppSync Security & Authorization](https://docs.aws.amazon.com/appsync/latest/devguide/security.html)
+- [Amplify UI React](https://ui.docs.amplify.aws/react)
+
+> The original Create React App boilerplate README has been replaced with project-specific guidance so contributors can understand the LMS architecture and deployment flow quickly.
