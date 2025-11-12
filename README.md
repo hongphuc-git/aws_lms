@@ -44,14 +44,14 @@ graph TD
   User -->|HTTPS + Route 53| CloudFront["CloudFront CDN"]
   CloudFront --> AmplifyHost["Amplify Hosting (S3 static site)"]
   CloudFront --> WAF["AWS WAF (managed rules)"]
-  WAF --> APIGW["Amazon API Gateway\n(Admin REST)"]
-  WAF --> AppSync["AWS AppSync\n(GraphQL)"]
+  WAF --> APIGW["Amazon API Gateway (Admin REST)"]
+  WAF --> AppSync["AWS AppSync (GraphQL)"]
   APIGW --> LambdaAdmin["Lambda: applms4426e4c8"]
   APIGW --> LambdaExpress["Lambda: applms51482c72"]
   LambdaAdmin --> Cognito["Amazon Cognito User Pool"]
   AppSync --> Cognito
   AppSync --> Dynamo["DynamoDB tables"]
-  AppSync --> S3["S3 (lecture assets)\nvia signed URLs"]
+  AppSync --> S3["Amazon S3 (lecture assets via signed URLs)"]
   LambdaAdmin --> CloudWatch["CloudWatch Logs & Metrics"]
   LambdaExpress --> CloudWatch
   AppSync --> CloudWatch
