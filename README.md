@@ -40,69 +40,70 @@ graph TD
 
 ```mermaid
 erDiagram
-  User {
-    ID id
-    String username
-    String email
-    Role role
+  USER {
+    string id
+    string username
+    string email
+    string role
   }
-  Course {
-    ID id
-    String title
-    String? description
-    ID instructorID
+  COURSE {
+    string id
+    string title
+    string description
+    string instructorID
   }
-  Lecture {
-    ID id
-    String title
-    AWSDateTime? deadline
-    ID courseID
+  LECTURE {
+    string id
+    string title
+    datetime deadline
+    string courseID
   }
-  Quiz {
-    ID id
-    String title
-    ID courseID
+  QUIZ {
+    string id
+    string title
+    string courseID
   }
-  Question {
-    ID id
-    String text
-    String[] options
-    Int correctAnswerIndex
+  QUESTION {
+    string id
+    string text
+    string options "JSON array"
+    int correctAnswerIndex
   }
-  Enrollment {
-    ID id
-    ID studentID
-    ID courseID
+  ENROLLMENT {
+    string id
+    string studentID
+    string courseID
   }
-  EnrollmentRequest {
-    ID id
-    ID studentID
-    ID courseID
-    Enum status
-    String? message
+  ENROLLMENTREQUEST {
+    string id
+    string studentID
+    string courseID
+    string status "PENDING|APPROVED|REJECTED"
+    string message "optional"
   }
-  Submission {
-    ID id
-    ID studentID
-    ID quizID
-    Int score
-    Int[] answers
+  SUBMISSION {
+    string id
+    string studentID
+    string quizID
+    int score
+    string answers "JSON array"
   }
 
-  User ||--o{ Course : "teaches"
-  User ||--o{ Enrollment : "enrolled in"
-  User ||--o{ EnrollmentRequest : "requests"
-  User ||--o{ Submission : "submits"
-  Course ||--o{ Lecture : "contains"
-  Course ||--o{ Quiz : "contains"
-  Quiz ||--o{ Question : "questions"
-  Course ||--o{ Enrollment : "enrollments"
-  Course ||--o{ EnrollmentRequest : "pending"
-  Quiz ||--o{ Submission : "graded work"
+  USER ||--o{ COURSE : "teaches"
+  USER ||--o{ ENROLLMENT : "enrolled in"
+  USER ||--o{ ENROLLMENTREQUEST : "requests"
+  USER ||--o{ SUBMISSION : "submits"
+  COURSE ||--o{ LECTURE : "contains"
+  COURSE ||--o{ QUIZ : "contains"
+  QUIZ ||--o{ QUESTION : "questions"
+  COURSE ||--o{ ENROLLMENT : "enrollments"
+  COURSE ||--o{ ENROLLMENTREQUEST : "pending"
+  QUIZ ||--o{ SUBMISSION : "graded work"
 ```
 
 - **Lecture.file** is an `S3Object (bucket, region, key)` pointing to Amplify-managed storage for PDFs/videos.
-- `EnrollmentRequest.status ∈ {PENDING, APPROVED, REJECTED}` and is promoted to an `Enrollment` when approved.
+- `EnrollmentRequest.status in {PENDING, APPROVED, REJECTED}` and is promoted to an `Enrollment` when approved.
+- `Course.description`, `Lecture.deadline`, and `EnrollmentRequest.message` are nullable in DynamoDB even though they appear as `string`/`datetime` in the diagram.
 - All relationships mirror the `@model`, `@hasMany`, and `@belongsTo` directives from `schema.graphql`, so AppSync generates DynamoDB tables and GSIs (`byInstructor`, `byCourse`, `byStudent`, `byQuiz`) to back the links.
 
 ## Network & Security Architecture
@@ -265,3 +266,4 @@ Lock down these routes with IAM, API keys, or Amplify environment rules to avoid
 - [Amplify UI React](https://ui.docs.amplify.aws/react)
 
 > The original Create React App boilerplate README has been replaced with project-specific guidance so contributors can understand the LMS architecture and deployment flow quickly.
+
