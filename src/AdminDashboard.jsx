@@ -73,7 +73,12 @@ function CourseForm({ onCreateCourse, creatingCourse, currentUser }) {
   };
 
   return (
-    <Card variation="outlined" padding="medium" marginBottom="medium">
+    <Card
+      variation="outlined"
+      padding="medium"
+      marginBottom="medium"
+      className="lms-card lms-section-card"
+    >
       <Heading level={5}>Tạo khoá học mới</Heading>
       <form onSubmit={handleSubmit}>
         <Flex direction="column" gap="small" marginTop="small">
@@ -423,7 +428,7 @@ export default function AdminDashboard({ user }) {
         creatingCourse={creatingCourse}
         currentUser={user}
       />
-      <Card variation="outlined" padding="large">
+      <Card variation="outlined" padding="large" className="lms-card lms-section-card">
         <Flex justifyContent="space-between" alignItems="center" marginBottom="medium">
           <View>
             <Heading level={4} marginBottom="xxs">
@@ -485,13 +490,13 @@ export default function AdminDashboard({ user }) {
 
   const OverviewTab = () => (
     <Flex direction="column" gap="medium">
-      <Card variation="outlined" padding="large">
+      <Card variation="outlined" padding="large" className="lms-card lms-section-card">
         <Heading level={5} marginBottom="medium">
           Sức khỏe hệ thống
         </Heading>
-        <Flex gap="large" wrap="wrap">
+        <View className="lms-stats-grid">
           {heroHighlights.map((item) => (
-            <View key={item.label}>
+            <View key={item.label} className="stat-card">
               <Text fontSize="small" color="font.tertiary">
                 {item.label}
               </Text>
@@ -500,10 +505,10 @@ export default function AdminDashboard({ user }) {
               </Heading>
             </View>
           ))}
-        </Flex>
-        <Flex gap="large" wrap="wrap" marginTop="large">
+        </View>
+        <View className="lms-stats-grid" style={{ marginTop: '1.5rem' }}>
           {roleBreakdown.map((role) => (
-            <View key={role.label}>
+            <View key={role.label} className="stat-card">
               <Text fontSize="small" color="font.tertiary">
                 {role.label}
               </Text>
@@ -512,7 +517,7 @@ export default function AdminDashboard({ user }) {
               </Heading>
             </View>
           ))}
-        </Flex>
+        </View>
       </Card>
       <Card variation="outlined" padding="large">
         <Heading level={5} marginBottom="medium">
@@ -520,7 +525,13 @@ export default function AdminDashboard({ user }) {
         </Heading>
         <Flex gap="medium" wrap="wrap">
           {quickActions.map((action) => (
-            <Card key={action.label} variation="outlined" padding="medium" width="min(320px, 100%)">
+            <Card
+              key={action.label}
+              variation="outlined"
+              padding="medium"
+              width="min(320px, 100%)"
+              className="lms-card"
+            >
               <Heading level={6} marginBottom="xxs">
                 {action.label}
               </Heading>
@@ -536,14 +547,15 @@ export default function AdminDashboard({ user }) {
   );
 
   return (
-    <View padding="large">
-      <Card
-        variation="elevated"
-        padding="large"
-        backgroundColor="var(--amplify-colors-brand-primary-10)"
-        style={{ color: 'var(--amplify-colors-font-primary)' }}
-      >
-        <Flex justifyContent="space-between" gap="medium" wrap="wrap">
+    <View className="lms-dashboard-shell">
+      <View className="lms-dashboard-inner">
+        <Card variation="elevated" padding="large" className="lms-hero-card">
+        <Flex
+          justifyContent="space-between"
+          gap="medium"
+          wrap="wrap"
+          className="lms-hero-header"
+        >
           <View>
             <Heading level={3} color="var(--amplify-colors-font-primary)" marginBottom="xxs">
               Bảng điều khiển: Quản trị viên
@@ -552,7 +564,7 @@ export default function AdminDashboard({ user }) {
               Chào mừng trở lại, {user?.username || 'Admin'}.
             </Text>
           </View>
-          <Flex gap="small">
+          <Flex gap="small" className="lms-hero-actions">
             <Button
               variation="link"
               onClick={() => {
@@ -568,9 +580,9 @@ export default function AdminDashboard({ user }) {
             </Button>
           </Flex>
         </Flex>
-        <Flex gap="large" wrap="wrap" marginTop="medium">
+        <View className="lms-hero-metrics">
           {heroHighlights.map((item) => (
-            <View key={item.label}>
+            <View key={item.label} className="metric">
               <Text fontSize="small" color="var(--amplify-colors-font-primary)" opacity={0.8}>
                 {item.label}
               </Text>
@@ -579,7 +591,7 @@ export default function AdminDashboard({ user }) {
               </Heading>
             </View>
           ))}
-        </Flex>
+        </View>
       </Card>
 
       {isBusy && (
@@ -589,7 +601,12 @@ export default function AdminDashboard({ user }) {
         </Flex>
       )}
 
-      <Card variation="outlined" padding="medium" marginTop="medium">
+      <Card
+        variation="outlined"
+        padding="medium"
+        marginTop="medium"
+        className="lms-card lms-section-card"
+      >
         <Flex justifyContent="space-between" alignItems="center">
           <Heading level={5} margin="0">
             Điều hướng
@@ -599,6 +616,7 @@ export default function AdminDashboard({ user }) {
             onChange={setActiveTab}
             isExclusive
             size="small"
+            className="lms-tab-toggle"
           >
             <ToggleButton value="overview">Tổng quan</ToggleButton>
             <ToggleButton value="users">Người dùng</ToggleButton>
@@ -612,13 +630,14 @@ export default function AdminDashboard({ user }) {
         {activeTab === 'users' && <UsersTab />}
         {activeTab === 'courses' && <CoursesTab />}
       </View>
-      {detailCourseId && (
-        <CourseDetail
-          courseId={detailCourseId}
-          onClose={() => setDetailCourseId('')}
-          role="Admin"
-        />
-      )}
     </View>
+    {detailCourseId && (
+      <CourseDetail
+        courseId={detailCourseId}
+        onClose={() => setDetailCourseId('')}
+        role="Admin"
+      />
+    )}
+  </View>
   );
 }

@@ -58,7 +58,12 @@ function CourseForm({ onCreate, creating, disabled }) {
   };
 
   return (
-    <Card variation="outlined" padding="medium" marginBottom="medium">
+    <Card
+      variation="outlined"
+      padding="medium"
+      marginBottom="medium"
+      className="lms-card lms-section-card"
+    >
       <Heading level={5}>Tạo khóa học mới</Heading>
       <form onSubmit={handleSubmit}>
         <Flex direction="column" gap="small" marginTop="small">
@@ -75,7 +80,7 @@ function CourseForm({ onCreate, creating, disabled }) {
             onChange={(e) => handleChange('description', e.target.value)}
             disabled={disabled}
           />
-          <Flex gap="small">
+          <Flex gap="small" className="lms-hero-actions">
             <Button
               type="submit"
               isLoading={creating}
@@ -127,7 +132,11 @@ function ResourceUploader() {
   }, []);
 
   return (
-    <Card variation="outlined" padding="medium">
+    <Card
+      variation="outlined"
+      padding="medium"
+      className="lms-card lms-section-card lms-resource-card"
+    >
       <Heading level={5}>Tài nguyên khóa học</Heading>
       <Text fontSize="small">
         Đẩy nhanh việc chuẩn bị bài bằng cách tải video, slide hoặc tài liệu
@@ -550,10 +559,10 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
 
   const OverviewTab = () => (
     <Flex direction="column" gap="medium">
-      <Card variation="outlined" padding="large">
-        <Flex gap="large" wrap="wrap">
+      <Card variation="outlined" padding="large" className="lms-card lms-section-card">
+        <View className="lms-stats-grid">
           {overviewCards.map((card) => (
-            <View key={card.label}>
+            <View key={card.label} className="stat-card">
               <Text fontSize="small" color="font.tertiary">
                 {card.label}
               </Text>
@@ -562,7 +571,7 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
               </Heading>
             </View>
           ))}
-        </Flex>
+        </View>
       </Card>
       <ResourceUploader />
     </Flex>
@@ -575,7 +584,7 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
         creating={creatingCourse}
         disabled={!profile?.id || loadingProfile}
       />
-      <Card variation="outlined" padding="large">
+      <Card variation="outlined" padding="large" className="lms-card lms-table-card">
         <Flex justifyContent="space-between" alignItems="center" marginBottom="medium">
           <Heading level={4} marginBottom="0">
             Danh sách khóa học
@@ -633,7 +642,7 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
   );
 
   const StudentsTab = () => (
-    <Card variation="outlined" padding="large">
+    <Card variation="outlined" padding="large" className="lms-card lms-table-card">
       <Flex justifyContent="space-between" alignItems="center" marginBottom="medium">
         <Heading level={4} marginBottom="0">
           Học viên đã ghi danh
@@ -678,18 +687,19 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
   );
 
   return (
-    <View padding="large">
-      <Card
-        variation="elevated"
-        padding="large"
-        backgroundColor="var(--amplify-colors-brand-primary-10)"
-        style={{ color: 'var(--amplify-colors-font-primary)' }}
-      >
+    <View className="lms-dashboard-shell">
+      <View className="lms-dashboard-inner">
+        <Card
+          variation="elevated"
+          padding="large"
+          className="lms-hero-card"
+        >
         <Flex
           justifyContent="space-between"
           alignItems="flex-start"
           gap="medium"
           wrap="wrap"
+          className="lms-hero-header"
         >
           <View>
             <Heading level={3} color="var(--amplify-colors-font-primary)" marginBottom="xxs">
@@ -709,7 +719,7 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
               </Text>
             )}
           </View>
-          <Flex gap="small">
+          <Flex gap="small" className="lms-hero-actions">
             <Button
               variation="link"
               onClick={handleRefresh}
@@ -725,9 +735,9 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
             </Button>
           </Flex>
         </Flex>
-        <Flex gap="large" wrap="wrap" marginTop="medium">
+        <View className="lms-hero-metrics">
           {heroHighlights.map((item) => (
-            <View key={item.label}>
+            <View key={item.label} className="metric">
               <Text fontSize="small" color="var(--amplify-colors-font-primary)" opacity={0.8}>
                 {item.label}
               </Text>
@@ -741,7 +751,7 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
               )}
             </View>
           ))}
-        </Flex>
+        </View>
       </Card>
 
       {isBusy && (
@@ -751,7 +761,12 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
         </Flex>
       )}
 
-      <Card variation="outlined" padding="medium" marginTop="medium">
+      <Card
+        variation="outlined"
+        padding="medium"
+        marginTop="medium"
+        className="lms-card lms-section-card"
+      >
         <Flex justifyContent="space-between" alignItems="center">
           <Heading level={5} margin="0">
             Khu vực quản lý
@@ -761,6 +776,7 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
             onChange={setActiveTab}
             isExclusive
             size="small"
+            className="lms-tab-toggle"
           >
             <ToggleButton value="overview">Tổng quan</ToggleButton>
             <ToggleButton value="courses">Khóa học</ToggleButton>
@@ -774,14 +790,15 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
         {activeTab === 'courses' && <CoursesTab />}
         {activeTab === 'students' && <StudentsTab />}
       </View>
-      {detailCourseId && (
-        <CourseDetail
-          courseId={detailCourseId}
-          onClose={() => setDetailCourseId('')}
-          role={role}
-        />
-      )}
     </View>
+    {detailCourseId && (
+      <CourseDetail
+        courseId={detailCourseId}
+        onClose={() => setDetailCourseId('')}
+        role={role}
+      />
+    )}
+  </View>
   );
 }
 

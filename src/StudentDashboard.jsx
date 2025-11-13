@@ -183,7 +183,7 @@ export default function StudentDashboard({ user, role = 'Student' }) {
 
     if (list.length === 0) {
       return (
-        <Card variation="outlined" padding="large">
+        <Card variation="outlined" padding="large" className="lms-card lms-section-card">
           <Heading level={5}>Chưa có khoá học</Heading>
           <Text>{emptyMessage}</Text>
         </Card>
@@ -195,7 +195,12 @@ export default function StudentDashboard({ user, role = 'Student' }) {
         {list.map((course) => {
           const pending = pendingCourseIds.has(course.id);
           return (
-            <Card key={course.id} variation="outlined" padding="medium">
+            <Card
+              key={course.id}
+              variation="outlined"
+              padding="medium"
+              className="lms-card lms-section-card"
+            >
               <Flex justifyContent="space-between" gap="medium" alignItems="flex-start">
                 <View>
                   <Heading level={5}>{course.title}</Heading>
@@ -246,41 +251,44 @@ export default function StudentDashboard({ user, role = 'Student' }) {
   };
 
   return (
-    <View padding="large">
-      <Card
-        variation="elevated"
-        padding="large"
-        backgroundColor="var(--amplify-colors-brand-primary-10)"
-        style={{ color: 'var(--amplify-colors-font-primary)' }}
-      >
-        <Heading level={4} color="var(--amplify-colors-font-primary)">
-          Chào mừng, {user?.username || 'Học viên'}
-        </Heading>
-        <Text color="var(--amplify-colors-font-primary)" opacity={0.9}>
-          Theo dõi tiến độ học tập và gửi yêu cầu tham gia các khoá học mới.
-        </Text>
-        <Flex gap="large" wrap="wrap" marginTop="medium">
+    <View className="lms-dashboard-shell">
+      <View className="lms-dashboard-inner">
+        <Card variation="elevated" padding="large" className="lms-hero-card">
+          <View className="lms-hero-header">
+            <Heading level={4} color="var(--amplify-colors-font-primary)">
+              Chào mừng, {user?.username || 'Hoc vien'}
+            </Heading>
+            <Text color="var(--amplify-colors-font-primary)" opacity={0.9}>
+              Theo dõi tiến độ học của bạn và gửi yêu cầu tham gia khóa học mới.
+            </Text>
+          </View>
+        <View className="lms-hero-metrics">
           {heroMetrics.map((metric) => (
-            <View key={metric.label}>
-              <Text fontSize="small" color="var(--amplify-colors-font-primary)" opacity={0.8}>
+            <View key={metric.label} className="metric">
+              <Text fontSize="small" color="var(--amplify-colors-font-primary)" opacity="0.8">
                 {metric.label}
               </Text>
-              <Heading level={3} margin="0">
+              <Heading level="3" margin="0">
                 {metric.value}
               </Heading>
             </View>
           ))}
-        </Flex>
+        </View>
       </Card>
 
-      <Card variation="outlined" padding="large" marginTop="large">
+      <Card
+        variation="outlined"
+        padding="large"
+        marginTop="large"
+        className="lms-card lms-section-card"
+      >
         <Flex justifyContent="space-between" alignItems="center" marginBottom="medium">
           <View>
             <Heading level={4} marginBottom="xxs">
-              Khoá học của bạn
+              Khóa học của bạn
             </Heading>
             <Text color="font.tertiary">
-              Danh sách khoá học đã được giảng viên phê duyệt cho bạn.
+              Danh sách khóa học đã được phê duyệt
             </Text>
           </View>
           <Button
@@ -292,28 +300,34 @@ export default function StudentDashboard({ user, role = 'Student' }) {
             isLoading={loadingCourses}
             variation="primary"
           >
-            Làm mới
+            Lam moi
           </Button>
         </Flex>
         {renderCourseList(
           enrolledCourses,
-          'Chưa có khoá học nào được phê duyệt.'
+          'Chua co khoa hoc nao duoc phe duyet.'
         )}
       </Card>
 
-      <Card variation="outlined" padding="large" marginTop="large">
+      <Card
+        variation="outlined"
+        padding="large"
+        marginTop="large"
+        className="lms-card lms-section-card"
+      >
         <Heading level={4} marginBottom="xxs">
-          Khoá học có thể đăng ký
+          Khóa học có thể đăng ký
         </Heading>
         <Text color="font.tertiary" marginBottom="medium">
-          Gửi yêu cầu đăng ký và chờ giảng viên hoặc quản trị viên xác nhận trước khi vào lớp.
+          Gửi yêu cầu cho giảng viên/ quản trị viên trước khi vào lớp.
         </Text>
         {renderCourseList(
           availableCourses,
-          'Không còn khoá học nào để đăng ký.',
+          'Không còn khóa học để đăng ký.',
           true
         )}
       </Card>
+      </View>
       {activeCourseId && (
         <CourseDetail
           courseId={activeCourseId}

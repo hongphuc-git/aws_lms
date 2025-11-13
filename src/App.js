@@ -5,11 +5,8 @@ import React, { useState, useEffect } from 'react';
 import AdminDashboard from './AdminDashboard';
 import InstructorDashboard from './InstructorDashboard';
 import StudentDashboard from './StudentDashboard';
-// --- AWS Amplify v6 Imports ---
 import { fetchAuthSession } from 'aws-amplify/auth';
 
-
-// --- Amplify UI ---
 import {
   withAuthenticator,
   Button,
@@ -18,23 +15,83 @@ import {
   Text,
   Flex,
   Badge,
+  ThemeProvider,
+  createTheme,
 } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
 
-// --- GraphQL (Do Amplify Codegen tạo ra) ---
-// import { createLecture } from './graphql/mutations';
-
-
-
-// Tạo API client v6 (thay cho API.graphql cũ)
-
-/* =================================================================
-   2. INSTRUCTOR DASHBOARD COMPONENT (Giảng viên)
-   ================================================================= */
-
-/* =================================================================
-   3. ADMIN DASHBOARD COMPONENT (Quản trị viên)
-   ================================================================= */
+const lmsTheme = createTheme({
+  name: 'lms-theme',
+  tokens: {
+    fonts: {
+      default: {
+        variable: {
+          value:
+            'Inter, Roboto, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        },
+      },
+    },
+    colors: {
+      brand: {
+        primary: {
+          10: '#eff6ff',
+          80: '#60a5fa',
+          90: '#2563eb',
+          100: '#1d4ed8',
+        },
+      },
+      font: {
+        primary: '#0f172a',
+        secondary: '#64748b',
+      },
+    },
+    radii: {
+      small: '12px',
+      medium: '16px',
+    },
+    shadows: {
+      small: { value: '0 25px 55px rgba(15,23,42,0.12)' },
+    },
+  },
+  overrides: [
+    {
+      colorMode: 'light',
+      tokens: {
+        components: {
+          button: {
+            primary: {
+              backgroundColor: { value: '{colors.brand.primary.90}' },
+              color: { value: '#fff' },
+              fontWeight: { value: '600' },
+              borderRadius: { value: '{radii.small}' },
+              paddingBlock: { value: '0.85rem' },
+              paddingInline: { value: '1.5rem' },
+              boxShadow: { value: '0 15px 25px rgba(37,99,235,0.25)' },
+              _hover: {
+                backgroundColor: { value: '{colors.brand.primary.100}' },
+                transform: { value: 'translateY(-1px)' },
+                boxShadow: { value: '0 20px 35px rgba(37,99,235,0.35)' },
+              },
+            },
+          },
+          card: {
+            borderRadius: { value: '{radii.medium}' },
+            boxShadow: { value: '{shadows.small}' },
+            padding: { value: '2.25rem' },
+          },
+          fieldcontrol: {
+            borderRadius: { value: '{radii.small}' },
+            borderColor: { value: 'rgba(15,23,42,0.12)' },
+            _focus: {
+              borderColor: { value: '{colors.brand.primary.90}' },
+              boxShadow: { value: '0 0 0 3px rgba(37,99,235,0.2)' },
+            },
+          },
+        },
+      },
+    },
+  ],
+});
 
 /* =================================================================
    4. MAIN APP COMPONENT (Đã được xác thực)
@@ -48,11 +105,9 @@ const AppContent = ({ signOut, user }) => {
     (async () => {
       try {
         const { tokens } = await fetchAuthSession();
-        // Claim 'cognito:groups' thường nằm trong ID token; fallback sang Access token
         const groups =
           (tokens?.idToken?.payload?.['cognito:groups'] ?? []) ||
           (tokens?.accessToken?.payload?.['cognito:groups'] ?? []);
-
         const groupList = Array.isArray(groups) ? groups : [];
 
         if (groupList.includes('Admin')) {
@@ -73,7 +128,6 @@ const AppContent = ({ signOut, user }) => {
     };
   }, []); // KHÔNG phụ thuộc vào `user`
 
-  // Render dashboard theo role
   const renderDashboardByRole = () => {
     if (!userRole) return <Text>Dang tai vai tro nguoi dung...</Text>;
     if (userRole === 'Admin') {
@@ -92,7 +146,6 @@ const AppContent = ({ signOut, user }) => {
       minHeight="100vh"
       backgroundColor="var(--amplify-colors-background-secondary)"
     >
-      {/* Header */}
       <Flex
         as="header"
         justifyContent="space-between"
@@ -115,7 +168,6 @@ const AppContent = ({ signOut, user }) => {
         </Flex>
       </Flex>
 
-      {/* Nội dung chính */}
       <main>{renderDashboardByRole()}</main>
     </View>
   );
@@ -126,8 +178,12 @@ const AppContent = ({ signOut, user }) => {
    ================================================================= */
 const AppWithAuth = withAuthenticator(AppContent);
 
-// Component App chính để export
 export default function App() {
-  return <AppWithAuth />;
+  return (
+    <ThemeProvider theme={lmsTheme} colorMode="light">
+      <div className="auth-gradient">
+        <AppWithAuth />
+      </div>
+    </ThemeProvider>
+  );
 }
-
