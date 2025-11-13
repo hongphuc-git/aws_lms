@@ -141,8 +141,8 @@ flowchart LR
     U[Browser / React SPA]
   end
 
-  U <-- "static bundle" --> CF[(CloudFront POP - Mumbai edge cache)]
-  CF <-- "cache miss" --> AH[Amplify Hosting (S3 origin)]
+  U <-->|static bundle| CF[(CloudFront POP - Mumbai edge cache)]
+  CF <-->|cache miss| AH[Amplify Hosting (S3 origin)]
 
   U -->|GraphQL| CF --> AppSync
   AppSync <--> DynamoDB[(DynamoDB tables)]
