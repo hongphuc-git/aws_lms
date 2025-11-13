@@ -36,6 +36,75 @@ graph TD
 - **Amazon S3 (storage/s357d74f7c)**: stores lecture files referenced through the `S3Object` type.
 - **Amazon API Gateway + AWS Lambda**: `apie63ce51c` proxies to two Lambdas that execute Cognito admin operations (list users, assign groups, and create accounts).
 
+## Database Schema
+
+```mermaid
+erDiagram
+  User {
+    ID id
+    String username
+    String email
+    Role role
+  }
+  Course {
+    ID id
+    String title
+    String? description
+    ID instructorID
+  }
+  Lecture {
+    ID id
+    String title
+    AWSDateTime? deadline
+    ID courseID
+  }
+  Quiz {
+    ID id
+    String title
+    ID courseID
+  }
+  Question {
+    ID id
+    String text
+    String[] options
+    Int correctAnswerIndex
+  }
+  Enrollment {
+    ID id
+    ID studentID
+    ID courseID
+  }
+  EnrollmentRequest {
+    ID id
+    ID studentID
+    ID courseID
+    Enum status
+    String? message
+  }
+  Submission {
+    ID id
+    ID studentID
+    ID quizID
+    Int score
+    Int[] answers
+  }
+
+  User ||--o{ Course : "teaches"
+  User ||--o{ Enrollment : "enrolled in"
+  User ||--o{ EnrollmentRequest : "requests"
+  User ||--o{ Submission : "submits"
+  Course ||--o{ Lecture : "contains"
+  Course ||--o{ Quiz : "contains"
+  Quiz ||--o{ Question : "questions"
+  Course ||--o{ Enrollment : "enrollments"
+  Course ||--o{ EnrollmentRequest : "pending"
+  Quiz ||--o{ Submission : "graded work"
+```
+
+- **Lecture.file** is an `S3Object (bucket, region, key)` pointing to Amplify-managed storage for PDFs/videos.
+- `EnrollmentRequest.status ∈ {PENDING, APPROVED, REJECTED}` and is promoted to an `Enrollment` when approved.
+- All relationships mirror the `@model`, `@hasMany`, and `@belongsTo` directives from `schema.graphql`, so AppSync generates DynamoDB tables and GSIs (`byInstructor`, `byCourse`, `byStudent`, `byQuiz`) to back the links.
+
 ## Network & Security Architecture
 
 ```mermaid
