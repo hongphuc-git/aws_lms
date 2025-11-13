@@ -141,14 +141,18 @@ flowchart LR
     U[Browser / React SPA]
   end
 
-  U <-->|static bundle| CF[(CloudFront POP - Mumbai edge cache)]
-  CF <-->|cache miss| AH[Amplify Hosting (S3 origin)]
+  U -- "request bundle" --> CF[(CloudFront POP - Mumbai edge cache)]
+  CF -- "cached bundle" --> U
+  CF -- "cache miss" --> AH[Amplify Hosting (S3 origin)]
+  AH -- "origin response" --> CF
 
-  U -->|GraphQL| CF --> AppSync
+  U -->|GraphQL| CF
+  CF --> AppSync
   AppSync <--> DynamoDB[(DynamoDB tables)]
   AppSync <--> S3[(Lecture media in S3)]
 
-  U -->|Admin REST| CF --> APIGW[API Gateway]
+  U -->|Admin REST| CF
+  CF --> APIGW[API Gateway]
   APIGW --> Lambda["Lambda admin ops"]
   Lambda <--> Cognito[(Cognito User Pool)]
 ```
