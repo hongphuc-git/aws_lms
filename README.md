@@ -141,20 +141,20 @@ flowchart LR
     U[Browser / React SPA]
   end
 
-  U <-- static bundle --> CF[(CloudFront POP - Mumbai edge cache)]
-  CF <-- miss --> AH[Amplify Hosting (S3 origin)]
+  U <-- "static bundle" --> CF[(CloudFront POP - Mumbai edge cache)]
+  CF <-- "cache miss" --> AH[Amplify Hosting (S3 origin)]
 
   U -->|GraphQL| CF --> AppSync
   AppSync <--> DynamoDB[(DynamoDB tables)]
   AppSync <--> S3[(Lecture media in S3)]
 
   U -->|Admin REST| CF --> APIGW[API Gateway]
-  APIGW --> Lambda[\Lambda admin ops/]
+  APIGW --> Lambda["Lambda admin ops"]
   Lambda <--> Cognito[(Cognito User Pool)]
 ```
 
 - Mumbai CloudFront POP keeps an edge cache for SPA bundles and any cacheable API responses, so learners near Mumbai rarely traverse to the S3 origin.
-- GraphQL traffic (courses, enrollments, quizzes) flows SPA → Mumbai POP → AppSync → DynamoDB/S3 and back through the POP to the browser.
+- GraphQL traffic (courses, enrollments, quizzes) flows SPA -> Mumbai POP -> AppSync -> DynamoDB/S3 and back through the POP to the browser.
 - Admin REST actions use the same POP before reaching API Gateway, the admin Lambdas, and Cognito for group management, ensuring low-latency control plane calls in the Mumbai region.
 
 ## Repository Layout
