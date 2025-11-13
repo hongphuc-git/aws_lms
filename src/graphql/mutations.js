@@ -312,6 +312,7 @@ export const createQuiz = /* GraphQL */ `
     createQuiz(input: $input, condition: $condition) {
       id
       title
+      deadline
       courseID
       course {
         id
@@ -340,6 +341,7 @@ export const updateQuiz = /* GraphQL */ `
     updateQuiz(input: $input, condition: $condition) {
       id
       title
+      deadline
       courseID
       course {
         id

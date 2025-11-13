@@ -1,5 +1,5 @@
 // App.jsx
-import outputs from './amplifyconfiguration';
+import './amplifyClient';
 import React, { useState, useEffect } from 'react';
 
 import AdminDashboard from './AdminDashboard';
@@ -25,8 +25,6 @@ import '@aws-amplify/ui-react/styles.css';
 // import { createLecture } from './graphql/mutations';
 
 
-import { Amplify } from 'aws-amplify';
-Amplify.configure(outputs);
 
 // Tạo API client v6 (thay cho API.graphql cũ)
 
@@ -132,3 +130,4 @@ const AppWithAuth = withAuthenticator(AppContent);
 export default function App() {
   return <AppWithAuth />;
 }
+

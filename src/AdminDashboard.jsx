@@ -9,6 +9,7 @@ import { fetchAuthSession } from 'aws-amplify/auth';
 import { listCourses } from './graphql/queries';
 import { createCourse } from './graphql/mutations';
 import CourseDetail from './CourseDetail';
+import './amplifyClient';
 
 const API_NAME = 'apie63ce51c';
 const ROLES = ['Admin', 'Instructor', 'Student'];
@@ -539,15 +540,15 @@ export default function AdminDashboard({ user }) {
       <Card
         variation="elevated"
         padding="large"
-        backgroundColor="var(--amplify-colors-brand-primary-80)"
-        style={{ color: 'white' }}
+        backgroundColor="var(--amplify-colors-brand-primary-10)"
+        style={{ color: 'var(--amplify-colors-font-primary)' }}
       >
         <Flex justifyContent="space-between" gap="medium" wrap="wrap">
           <View>
-            <Heading level={3} color="white" marginBottom="xxs">
+            <Heading level={3} color="var(--amplify-colors-font-primary)" marginBottom="xxs">
               Bảng điều khiển: Quản trị viên
             </Heading>
-            <Text color="white" opacity={0.9}>
+            <Text color="var(--amplify-colors-font-primary)" opacity={0.9}>
               Chào mừng trở lại, {user?.username || 'Admin'}.
             </Text>
           </View>
@@ -559,7 +560,6 @@ export default function AdminDashboard({ user }) {
                 loadCourses();
               }}
               isLoading={isBusy}
-              style={{ color: 'white' }}
             >
               Làm mới dữ liệu
             </Button>
@@ -571,10 +571,10 @@ export default function AdminDashboard({ user }) {
         <Flex gap="large" wrap="wrap" marginTop="medium">
           {heroHighlights.map((item) => (
             <View key={item.label}>
-              <Text fontSize="small" color="white" opacity={0.8}>
+              <Text fontSize="small" color="var(--amplify-colors-font-primary)" opacity={0.8}>
                 {item.label}
               </Text>
-              <Heading level={3} margin="0">
+              <Heading level={3} margin="0" color="var(--amplify-colors-font-primary)">
                 {item.value}
               </Heading>
             </View>

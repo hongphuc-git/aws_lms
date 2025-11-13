@@ -291,6 +291,7 @@ export const onCreateQuiz = /* GraphQL */ `
     onCreateQuiz(filter: $filter) {
       id
       title
+      deadline
       courseID
       course {
         id
@@ -316,6 +317,7 @@ export const onUpdateQuiz = /* GraphQL */ `
     onUpdateQuiz(filter: $filter) {
       id
       title
+      deadline
       courseID
       course {
         id
@@ -341,6 +343,7 @@ export const onDeleteQuiz = /* GraphQL */ `
     onDeleteQuiz(filter: $filter) {
       id
       title
+      deadline
       courseID
       course {
         id

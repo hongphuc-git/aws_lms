@@ -15,10 +15,12 @@ import {
 } from '@aws-amplify/ui-react';
 import { generateClient } from '@aws-amplify/api';
 import { listCourses, enrollmentsByStudentID } from './graphql/queries';
+import './amplifyClient';
 import {
   createEnrollmentRequestMutation,
   enrollmentRequestsByStudentQuery
 } from './graphql/enrollmentRequests';
+import CourseDetail from './CourseDetail';
 
 const client = generateClient();
 
@@ -28,6 +30,7 @@ export default function StudentDashboard({ user, role = 'Student' }) {
   const [enrollments, setEnrollments] = useState([]);
   const [requests, setRequests] = useState([]);
   const [requestingCourseId, setRequestingCourseId] = useState('');
+  const [activeCourseId, setActiveCourseId] = useState('');
 
   const studentId = useMemo(() => {
     return (
@@ -160,6 +163,10 @@ export default function StudentDashboard({ user, role = 'Student' }) {
     }
   };
 
+  const handleOpenCourse = useCallback((courseId) => {
+    setActiveCourseId(courseId);
+  }, []);
+
   const renderCourseList = (
     list,
     emptyMessage,
@@ -219,6 +226,16 @@ export default function StudentDashboard({ user, role = 'Student' }) {
                       {pending ? 'Đang chờ duyệt' : 'Đăng ký'}
                     </Button>
                   )}
+                  {!allowRegistration && (
+                    <Button
+                      size="small"
+                      marginTop="small"
+                      variation="primary"
+                      onClick={() => handleOpenCourse(course.id)}
+                    >
+                      Vào học
+                    </Button>
+                  )}
                 </View>
               </Flex>
             </Card>
@@ -233,19 +250,19 @@ export default function StudentDashboard({ user, role = 'Student' }) {
       <Card
         variation="elevated"
         padding="large"
-        backgroundColor="var(--amplify-colors-brand-primary-90)"
-        style={{ color: 'white' }}
+        backgroundColor="var(--amplify-colors-brand-primary-10)"
+        style={{ color: 'var(--amplify-colors-font-primary)' }}
       >
-        <Heading level={4} color="white">
+        <Heading level={4} color="var(--amplify-colors-font-primary)">
           Chào mừng, {user?.username || 'Học viên'}
         </Heading>
-        <Text color="white" opacity={0.9}>
+        <Text color="var(--amplify-colors-font-primary)" opacity={0.9}>
           Theo dõi tiến độ học tập và gửi yêu cầu tham gia các khoá học mới.
         </Text>
         <Flex gap="large" wrap="wrap" marginTop="medium">
           {heroMetrics.map((metric) => (
             <View key={metric.label}>
-              <Text fontSize="small" color="white" opacity={0.8}>
+              <Text fontSize="small" color="var(--amplify-colors-font-primary)" opacity={0.8}>
                 {metric.label}
               </Text>
               <Heading level={3} margin="0">
@@ -297,6 +314,14 @@ export default function StudentDashboard({ user, role = 'Student' }) {
           true
         )}
       </Card>
+      {activeCourseId && (
+        <CourseDetail
+          courseId={activeCourseId}
+          onClose={() => setActiveCourseId('')}
+          role="Student"
+          user={user}
+        />
+      )}
     </View>
   );
 }

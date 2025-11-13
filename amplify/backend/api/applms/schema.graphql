@@ -45,6 +45,7 @@ type Lecture @model @auth(rules: [
 ]) {
   id: ID!
   title: String!
+  deadline: AWSDateTime
   courseID: ID! @index(name: "byCourse")
   course: Course @belongsTo(fields: ["courseID"])
   # File được lưu trên S3
@@ -73,13 +74,13 @@ type Question @model @auth(rules: [
   quiz: Quiz @belongsTo(fields: ["quizID"])
   text: String!
   options: [String!]!
-  correctAnswerIndex: Int @auth(rules: [{allow: groups, groups: ["Instructor", "Admin"]}]) # ĐÃ SỬA LỖI: Bỏ dấu ! Chỉ Admin/Instructor thấy đáp án
+  correctAnswerIndex: Int @auth(rules: [{allow: groups, groups: ["Instructor", "Admin"]}, {allow: private, provider: userPools, operations: [read]}]) # ĐÃ SỬA LỖI: Bỏ dấu ! Chỉ Admin/Instructor thấy đáp án
 }
 
 # 6. Bảng Đăng ký (Kết nối Student và Course)
 type Enrollment @model @auth(rules: [
   {allow: owner, ownerField: "studentID", operations: [create, read, update, delete]},
-  {allow: groups, groups: ["Instructor", "Admin"], operations: [read]}
+  {allow: groups, groups: ["Instructor", "Admin"], operations: [create, read, update, delete]}
 ]) {
   id: ID!
   studentID: ID! @index(name: "byStudent")

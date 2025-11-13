@@ -31,6 +31,7 @@ import {
 } from './graphql/queries';
 import { createCourse, createUser } from './graphql/mutations';
 import CourseDetail from './CourseDetail';
+import './amplifyClient';
 
 const formatDate = (value) => {
   if (!value) return '—';
@@ -170,6 +171,7 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
 
   const [creatingCourse, setCreatingCourse] = useState(false);
   const [detailCourseId, setDetailCourseId] = useState('');
+  const [visitCount, setVisitCount] = useState(0);
 
   const username = user?.username;
 
@@ -202,7 +204,60 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
     return { or: clauses };
   }, [derivedUserId, username]);
 
+  useEffect(() => {
+    try {
+      if (typeof window === 'undefined') return;
+      const raw = window.localStorage.getItem('instructorDashboardVisitCount');
+      const current = Number.parseInt(raw || '0', 10) || 0;
+      const nextValue = current + 1;
+      window.localStorage.setItem('instructorDashboardVisitCount', String(nextValue));
+      setVisitCount(nextValue);
+    } catch (error) {
+      console.warn('Unable to persist visit counter', error);
+      setVisitCount((prev) => (prev > 0 ? prev : 1));
+    }
+  }, []);
 
+
+
+  const fetchAllEnrollmentsForCourse = useCallback(
+    async (courseId) => {
+      let nextToken = null;
+      const aggregated = [];
+      do {
+        const result = await client.graphql({
+          query: enrollmentsByCourseID,
+          variables: { courseID: courseId, limit: 200, nextToken },
+          authMode: 'userPool'
+        });
+        const payload = result.data?.enrollmentsByCourseID;
+        aggregated.push(...(payload?.items?.filter(Boolean) ?? []));
+        nextToken = payload?.nextToken ?? null;
+      } while (nextToken);
+
+      if (aggregated.length <= 1) {
+        return aggregated;
+      }
+
+      const seenStudents = new Set();
+      return aggregated
+        .sort((a, b) => {
+          const aTime = Date.parse(a?.createdAt || '') || 0;
+          const bTime = Date.parse(b?.createdAt || '') || 0;
+          return aTime - bTime;
+        })
+        .filter((enrollment) => {
+          const studentKey = enrollment?.studentID;
+          if (!studentKey) return true;
+          if (seenStudents.has(studentKey)) {
+            return false;
+          }
+          seenStudents.add(studentKey);
+          return true;
+        });
+    },
+    [client]
+  );
 
   const loadEnrollmentsForCourses = useCallback(async (courseList) => {
     if (!courseList?.length) {
@@ -214,13 +269,7 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
       const entries = await Promise.all(
         courseList.map(async (course) => {
           try {
-            const result = await client.graphql({
-              query: enrollmentsByCourseID,
-              variables: { courseID: course.id, limit: 100 },
-              authMode: 'userPool'
-            });
-            const items =
-              result.data?.enrollmentsByCourseID?.items?.filter(Boolean) ?? [];
+            const items = await fetchAllEnrollmentsForCourse(course.id);
             return [course.id, items];
           } catch (err) {
             console.error('load enrollments error:', course.id, err);
@@ -232,7 +281,7 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
     } finally {
       setLoadingEnrollments(false);
     }
-  }, [client]);
+  }, [fetchAllEnrollmentsForCourse]);
 
   const loadCoursesForInstructor = useCallback(async (instructorId) => {
     if (!instructorId) {
@@ -449,20 +498,54 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
     );
   }, [courses, enrollmentMap]);
 
+  const onlineUsersEstimate = useMemo(() => {
+    const DAY = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const activeIds = new Set();
+    allEnrollments.forEach((enrollment) => {
+      if (!enrollment?.studentID || !enrollment?.createdAt) return;
+      const timestamp = Date.parse(enrollment.createdAt);
+      if (!Number.isNaN(timestamp) && now - timestamp <= DAY) {
+        activeIds.add(enrollment.studentID);
+      }
+    });
+    return activeIds.size;
+  }, [allEnrollments]);
+
   const overviewCards = useMemo(() => ([
     { label: 'Khóa học của tôi', value: courses.length },
     { label: 'Học viên đã ghi danh', value: totalStudents },
     { label: 'Lượt ghi danh', value: allEnrollments.length }
   ]), [courses.length, totalStudents, allEnrollments.length]);
 
-  const heroHighlights = useMemo(
-    () => [
-      { label: 'Khoá học đang quản lý', value: courses.length },
-      { label: 'Học viên chủ động', value: totalStudents },
-      { label: 'Tổng lượt ghi danh', value: allEnrollments.length }
-    ],
-    [courses.length, totalStudents, allEnrollments.length]
-  );
+  const heroHighlights = useMemo(() => {
+    const now = new Date();
+    const dateText = now.toLocaleDateString('vi-VN', {
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    });
+    const timeText = now.toLocaleTimeString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+
+    return [
+      { label: 'Ngày hiện tại', value: dateText, helper: timeText },
+      {
+        label: 'Lượt truy cập',
+        value: visitCount.toLocaleString('vi-VN'),
+        helper: 'Số lần dashboard được mở trên thiết bị này'
+      },
+      {
+        label: 'Người online (24h gần nhất)',
+        value: onlineUsersEstimate.toLocaleString('vi-VN'),
+        helper: 'Dựa trên lượt ghi danh trong 24 giờ qua'
+      }
+    ];
+  }, [onlineUsersEstimate, visitCount]);
   const isBusy = loadingProfile || loadingCourses || loadingEnrollments;
 
   const OverviewTab = () => (
@@ -599,8 +682,8 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
       <Card
         variation="elevated"
         padding="large"
-        backgroundColor="var(--amplify-colors-brand-primary-100)"
-        style={{ color: 'white' }}
+        backgroundColor="var(--amplify-colors-brand-primary-10)"
+        style={{ color: 'var(--amplify-colors-font-primary)' }}
       >
         <Flex
           justifyContent="space-between"
@@ -609,14 +692,14 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
           wrap="wrap"
         >
           <View>
-            <Heading level={3} color="white" marginBottom="xxs">
+            <Heading level={3} color="var(--amplify-colors-font-primary)" marginBottom="xxs">
               Bảng điều khiển: Giảng viên
             </Heading>
-            <Text color="white">
+            <Text color="var(--amplify-colors-font-primary)">
               Xin chào, {username || 'Instructor'}.
             </Text>
             {profile?.email && (
-              <Text fontSize="small" color="white" opacity={0.8}>
+              <Text fontSize="small" color="var(--amplify-colors-font-primary)" opacity={0.8}>
                 Email: {profile.email}
               </Text>
             )}
@@ -631,7 +714,6 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
               variation="link"
               onClick={handleRefresh}
               isLoading={isBusy}
-              style={{ color: 'white' }}
             >
               Làm mới dữ liệu
             </Button>
@@ -646,12 +728,17 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
         <Flex gap="large" wrap="wrap" marginTop="medium">
           {heroHighlights.map((item) => (
             <View key={item.label}>
-              <Text fontSize="small" color="white" opacity={0.8}>
+              <Text fontSize="small" color="var(--amplify-colors-font-primary)" opacity={0.8}>
                 {item.label}
               </Text>
-              <Heading level={3} margin="0">
+              <Heading level={3} margin="0" color="var(--amplify-colors-font-primary)">
                 {item.value}
               </Heading>
+              {item.helper && (
+                <Text fontSize="small" color="var(--amplify-colors-font-primary)" opacity={0.75}>
+                  {item.helper}
+                </Text>
+              )}
             </View>
           ))}
         </Flex>
@@ -697,3 +784,4 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
     </View>
   );
 }
+

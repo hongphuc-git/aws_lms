@@ -114,6 +114,7 @@ export const getLecture = /* GraphQL */ `
     getLecture(id: $id) {
       id
       title
+      deadline
       courseID
       course {
         id
@@ -143,10 +144,11 @@ export const listLectures = /* GraphQL */ `
     $nextToken: String
   ) {
     listLectures(filter: $filter, limit: $limit, nextToken: $nextToken) {
-      items {
-        id
-        title
-        courseID
+        items {
+          id
+          title
+          deadline
+          courseID
         createdAt
         updatedAt
         __typename
@@ -188,10 +190,11 @@ export const listQuizzes = /* GraphQL */ `
     $nextToken: String
   ) {
     listQuizzes(filter: $filter, limit: $limit, nextToken: $nextToken) {
-      items {
-        id
-        title
-        courseID
+        items {
+          id
+          title
+          deadline
+          courseID
         createdAt
         updatedAt
         __typename
@@ -439,6 +442,12 @@ export const lecturesByCourseID = /* GraphQL */ `
         id
         title
         courseID
+        file {
+          bucket
+          region
+          key
+          __typename
+        }
         createdAt
         updatedAt
         __typename
