@@ -319,7 +319,7 @@ export default function InstructorDashboard({ user, role = 'Instructor' }) {
 
   const seedUserProfile = useCallback(async () => {
     if (!derivedUserId) {
-      throw new Error('Kh?ng x?c ??nh ???c ID ng??i d?ng ?? kh?i t?o.');
+      throw new Error('Không xác nhận được ID ngườii dùng khởi tạo.');
     }
     const fallbackEmail =
       derivedEmail || `no-email-${derivedUserId}@placeholder.local`;

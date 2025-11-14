@@ -300,12 +300,12 @@ export default function StudentDashboard({ user, role = 'Student' }) {
             isLoading={loadingCourses}
             variation="primary"
           >
-            Lam moi
+            Làm mới
           </Button>
         </Flex>
         {renderCourseList(
           enrolledCourses,
-          'Chua co khoa hoc nao duoc phe duyet.'
+          'Chưa có khóa học nào được phê duyệt'
         )}
       </Card>
 

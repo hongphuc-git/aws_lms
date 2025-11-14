@@ -5,36 +5,64 @@ This repository contains a role-based Learning Management System built with Reac
 ## Architecture Overview
 
 ```mermaid
-graph TD
-  subgraph Client
+flowchart TB
+  subgraph Internet
+    Users((Users))
+    Route53((1. Route 53))
+    CloudFront((2. CloudFront + WAF))
+  end
+
+  subgraph Edge
+    ACM[(3. AWS Certificate Manager)]
+  end
+
+  subgraph Amplify_Pipeline["4. Amplify Build Pipeline"]
+    Build["Node 18 -> npm install -> npm run build"]
+  end
+
+  subgraph Hosting["5. Amplify Hosting (S3 origin)"]
     SPA["React SPA + Amplify UI"]
   end
 
-  SPA -->|Sign-in / token refresh| Cognito["Amazon Cognito User Pool"]
-  SPA -->|GraphQL queries & mutations| AppSync["AWS AppSync API"]
-  AppSync --> DynamoDB["DynamoDB tables (User, Course, Lecture, Quiz, ...)"]
-  SPA -->|Upload or download lecture assets| S3["Amazon S3 bucket"]
-  SPA -->|Admin REST actions| APIGW["Amazon API Gateway"]
-  APIGW --> LambdaAdmin["Lambda: applms4426e4c8 (Cognito admin ops)"]
-  APIGW --> LambdaExpress["Lambda: applms51482c72 (Express admin endpoints)"]
-  LambdaAdmin --> Cognito
-
-  subgraph Amplify Hosting
-    BuildPipeline["Amplify Build (Node 18 -> npm install -> npm run build)"]
-    Hosting["Amplify Hosting + CloudFront"]
+  subgraph Backend["6. Application Services"]
+    APIGW["Amazon API Gateway (apie63ce51c)"]
+    LambdaAdmin["Lambda applms4426e4c8\n(Cognito admin ops)"]
+    LambdaExpress["Lambda applms51482c72\n(Express admin endpoints)"]
+    AppSync["AWS AppSync GraphQL API"]
+    Cognito["Amazon Cognito User Pool\n(auth/applms74700e61)"]
   end
 
-  BuildPipeline --> Hosting --> SPA
+  subgraph Data["7. Data & Storage"]
+    DynamoDB["Amazon DynamoDB tables\n(User, Course, Lecture, ...)"]
+    S3["Amazon S3 bucket\n(storage/s357d74f7c)"]
+  end
+
+  subgraph Observability["8. Monitoring"]
+    CloudWatch["Amazon CloudWatch Logs & Metrics"]
+  end
+
+  Users --> Route53 --> CloudFront --> Hosting
+  ACM --> CloudFront
+  Build --> Hosting --> SPA
+  SPA -->|Sign-in / refresh| Cognito
+  SPA -->|GraphQL| AppSync --> DynamoDB
+  SPA -->|File upload/download| S3
+  SPA -->|Admin REST| APIGW --> LambdaAdmin --> Cognito
+  APIGW --> LambdaExpress
+  SPA --> CloudWatch
+  LambdaAdmin --> CloudWatch
+  LambdaExpress --> CloudWatch
+  AppSync --> CloudWatch
 ```
 
-## AWS Infrastructure Components
+## mydatabase (sử dụng các dịch vụ AWS nào?)
 
-- **Amplify Hosting / Build**: defined in `amplify.yml`, runs Node 18, installs dependencies, builds the React app, and serves it through CloudFront.
-- **Amazon Cognito (auth/applms74700e61)**: email-based sign-up, optional MFA (OFF by default), user groups `Admin`, `Instructor`, and `Student`.
-- **AWS AppSync (api/applms)**: GraphQL API generated from `amplify/backend/api/applms/schema.graphql`, secured with the Cognito User Pool.
-- **Amazon DynamoDB**: tables for each `@model` type such as `User`, `Course`, `Lecture`, `Quiz`, `Question`, `Enrollment`, `EnrollmentRequest`, and `Submission`.
-- **Amazon S3 (storage/s357d74f7c)**: stores lecture files referenced through the `S3Object` type.
-- **Amazon API Gateway + AWS Lambda**: `apie63ce51c` proxies to two Lambdas that execute Cognito admin operations (list users, assign groups, and create accounts).
+- **Amplify Hosting / Build**: `amplify.yml` orchestrates the Node 18 build, pushes static assets to the Amplify-managed S3 origin, và CloudFront cache SPA giúp client tải nhanh.
+- **Amazon Cognito (auth/applms74700e61)**: quản lý đăng ký qua email, nhóm quyền `Admin/Instructor/Student`, hỗ trợ MFA tùy chọn nhưng đang OFF; Lambda admin gọi API Cognito để gán nhóm và tạo user.
+- **AWS AppSync (api/applms)**: phát sinh từ `amplify/backend/api/applms/schema.graphql`, xác thực bằng Cognito tokens, map sang DynamoDB để lưu toàn bộ thực thể User/Course/Lecture/Quiz/Enrollment/... .
+- **Amazon DynamoDB**: mỗi `@model` tương ứng một bảng PAY_PER_REQUEST với GSI (`byInstructor`, `byCourse`, `byStudent`, `byQuiz`) đảm bảo truy vấn nhanh cho dashboard giảng viên/học viên.
+- **Amazon S3 (storage/s357d74f7c)**: chứa tài liệu khóa học, video, file quiz; Amplify Storage client trong frontend sinh URL ký (getUrl/uploadData) để xử lý upload/download an toàn.
+- **Amazon API Gateway + AWS Lambda**: REST API `apie63ce51c` định tuyến tới hai Lambda (`applms4426e4c8`, `applms51482c72`) để thực thi tác vụ quản trị như liệt kê user, gán group, khởi tạo tài khoản hoặc các endpoint Express tùy chỉnh.
 
 ## Database Schema
 
@@ -88,6 +116,21 @@ erDiagram
     int score
     string answers "JSON array"
   }
+  COURSENOTIFICATION {
+    string id
+    string courseID
+    string title
+    string content
+    string creatorID
+  }
+  MESSAGE {
+    string id
+    string senderID
+    string recipientID
+    string subject
+    string status "UNREAD|READ"
+    string courseID "optional"
+  }
 
   USER ||--o{ COURSE : "teaches"
   USER ||--o{ ENROLLMENT : "enrolled in"
@@ -99,12 +142,22 @@ erDiagram
   COURSE ||--o{ ENROLLMENT : "enrollments"
   COURSE ||--o{ ENROLLMENTREQUEST : "pending"
   QUIZ ||--o{ SUBMISSION : "graded work"
+  COURSE ||--o{ COURSENOTIFICATION : "announces"
+  USER ||--o{ MESSAGE : "sender"
+  USER ||--o{ MESSAGE : "recipient"
+  COURSE ||--o{ MESSAGE : "context (optional)"
 ```
 
 - **Lecture.file** is an `S3Object (bucket, region, key)` pointing to Amplify-managed storage for PDFs/videos.
 - `EnrollmentRequest.status in {PENDING, APPROVED, REJECTED}` and is promoted to an `Enrollment` when approved.
 - `Course.description`, `Lecture.deadline`, and `EnrollmentRequest.message` are nullable in DynamoDB even though they appear as `string`/`datetime` in the diagram.
 - All relationships mirror the `@model`, `@hasMany`, and `@belongsTo` directives from `schema.graphql`, so AppSync generates DynamoDB tables and GSIs (`byInstructor`, `byCourse`, `byStudent`, `byQuiz`) to back the links.
+
+## Course Notifications & Internal Mail
+
+- **Course Notifications tab** inside `CourseDetail` lets Admins/Instructors broadcast announcements for each course and keeps a chronological feed for every participant.
+- **Mail nội bộ tab** introduces a lightweight inbox/outbox so Admins, Instructors, and Students can send short internal mails to any Cognito identity (use the recipient's email/sub as the ID) and mark received messages as read.
+- These features ride on the same Amplify client; after pulling the repo just run `amplify push` so AppSync/DynamoDB provision the new `CourseNotification` and `Message` models.
 
 ## Network & Security Architecture
 

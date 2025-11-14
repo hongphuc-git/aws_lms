@@ -54,6 +54,7 @@ export const getCourse = /* GraphQL */ `
     getCourse(id: $id) {
       id
       title
+      deadline
       description
       instructorID
       instructor {
@@ -82,6 +83,14 @@ export const getCourse = /* GraphQL */ `
         nextToken
         __typename
       }
+      notifications {
+        nextToken
+        __typename
+      }
+      messages {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -98,6 +107,7 @@ export const listCourses = /* GraphQL */ `
       items {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -119,6 +129,7 @@ export const getLecture = /* GraphQL */ `
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -144,11 +155,11 @@ export const listLectures = /* GraphQL */ `
     $nextToken: String
   ) {
     listLectures(filter: $filter, limit: $limit, nextToken: $nextToken) {
-        items {
-          id
-          title
-          deadline
-          courseID
+      items {
+        id
+        title
+        deadline
+        courseID
         createdAt
         updatedAt
         __typename
@@ -167,6 +178,7 @@ export const getQuiz = /* GraphQL */ `
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -190,11 +202,10 @@ export const listQuizzes = /* GraphQL */ `
     $nextToken: String
   ) {
     listQuizzes(filter: $filter, limit: $limit, nextToken: $nextToken) {
-        items {
-          id
-          title
-          deadline
-          courseID
+      items {
+        id
+        title
+        courseID
         createdAt
         updatedAt
         __typename
@@ -267,6 +278,7 @@ export const getEnrollment = /* GraphQL */ `
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -310,6 +322,7 @@ export const getEnrollmentRequest = /* GraphQL */ `
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -394,6 +407,112 @@ export const listSubmissions = /* GraphQL */ `
     }
   }
 `;
+export const getCourseNotification = /* GraphQL */ `
+  query GetCourseNotification($id: ID!) {
+    getCourseNotification(id: $id) {
+      id
+      courseID
+      course {
+        id
+        title
+        deadline
+        description
+        instructorID
+        createdAt
+        updatedAt
+        __typename
+      }
+      title
+      content
+      creatorID
+      creatorName
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listCourseNotifications = /* GraphQL */ `
+  query ListCourseNotifications(
+    $filter: ModelCourseNotificationFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listCourseNotifications(
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        courseID
+        title
+        content
+        creatorID
+        creatorName
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getMessage = /* GraphQL */ `
+  query GetMessage($id: ID!) {
+    getMessage(id: $id) {
+      id
+      senderID
+      recipientID
+      subject
+      body
+      status
+      courseID
+      senderName
+      recipientName
+      course {
+        id
+        title
+        deadline
+        description
+        instructorID
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listMessages = /* GraphQL */ `
+  query ListMessages(
+    $filter: ModelMessageFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listMessages(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        senderID
+        recipientID
+        subject
+        body
+        status
+        courseID
+        senderName
+        recipientName
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
 export const coursesByInstructorID = /* GraphQL */ `
   query CoursesByInstructorID(
     $instructorID: ID!
@@ -412,6 +531,7 @@ export const coursesByInstructorID = /* GraphQL */ `
       items {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -441,13 +561,8 @@ export const lecturesByCourseID = /* GraphQL */ `
       items {
         id
         title
+        deadline
         courseID
-        file {
-          bucket
-          region
-          key
-          __typename
-        }
         createdAt
         updatedAt
         __typename
@@ -652,6 +767,139 @@ export const submissionsByStudentID = /* GraphQL */ `
         quizID
         score
         answers
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const courseNotificationsByCourseID = /* GraphQL */ `
+  query CourseNotificationsByCourseID(
+    $courseID: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelCourseNotificationFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    courseNotificationsByCourseID(
+      courseID: $courseID
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        courseID
+        title
+        content
+        creatorID
+        creatorName
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const messagesBySenderID = /* GraphQL */ `
+  query MessagesBySenderID(
+    $senderID: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelMessageFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    messagesBySenderID(
+      senderID: $senderID
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        senderID
+        recipientID
+        subject
+        body
+        status
+        courseID
+        senderName
+        recipientName
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const messagesByRecipientID = /* GraphQL */ `
+  query MessagesByRecipientID(
+    $recipientID: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelMessageFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    messagesByRecipientID(
+      recipientID: $recipientID
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        senderID
+        recipientID
+        subject
+        body
+        status
+        courseID
+        senderName
+        recipientName
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const messagesByCourseID = /* GraphQL */ `
+  query MessagesByCourseID(
+    $courseID: ID!
+    $sortDirection: ModelSortDirection
+    $filter: ModelMessageFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    messagesByCourseID(
+      courseID: $courseID
+      sortDirection: $sortDirection
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        senderID
+        recipientID
+        subject
+        body
+        status
+        courseID
+        senderName
+        recipientName
         createdAt
         updatedAt
         __typename

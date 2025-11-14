@@ -50,6 +50,7 @@ import {
   enrollmentRequestsByCourseQuery,
   deleteEnrollmentRequestMutation
 } from './graphql/enrollmentRequests';
+import { CourseNotificationsPanel, MailCenter } from './notifications';
 
 const MATERIAL_ACCESS_LEVEL = 'guest';
 const ACCESS_LEVEL_PREFIXES = {
@@ -286,10 +287,12 @@ export default function CourseDetail({
     ];
 
     if (!isStudent) {
-      base.push({ value: 'students', label: 'Học viên' });
+      base.push({ value: 'students', label: 'Students' });
     }
 
-    base.push({ value: 'scores', label: 'Điểm số' });
+    base.push({ value: 'notifications', label: 'Notifications' });
+    base.push({ value: 'messages', label: 'Internal mail' });
+    base.push({ value: 'scores', label: 'Scores' });
 
     if (!isStudent) {
       base.push({ value: 'requests', label: 'Yêu cầu' });
@@ -1593,6 +1596,28 @@ export default function CourseDetail({
               </LayoutCard>
             )}
 
+            {activeTab === 'notifications' && (
+              <View marginTop="medium">
+                <CourseNotificationsPanel
+                  courseId={courseId}
+                  user={user}
+                  canManageCourse={canManageCourse}
+                  client={client}
+                />
+              </View>
+            )}
+
+            {activeTab === 'messages' && (
+              <View marginTop="medium">
+                <MailCenter
+                  course={course}
+                  enrollments={enrollments}
+                  user={user}
+                  client={client}
+                />
+              </View>
+            )}
+
             {activeTab === 'requests' && role !== 'Student' && (
               <LayoutCard title="Yêu cầu ghi danh">
                 {loadingRequests ? (
@@ -1680,3 +1705,4 @@ export default function CourseDetail({
     </View>
   );
 }
+

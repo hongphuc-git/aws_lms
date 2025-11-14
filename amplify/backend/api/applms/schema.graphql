@@ -27,6 +27,7 @@ type Course @model @auth(rules: [
 ]) {
   id: ID!
   title: String!
+  deadline: AWSDateTime
   description: String
   instructorID: ID! @index(name: "byInstructor")
   instructor: User @belongsTo(fields: ["instructorID"])
@@ -34,6 +35,8 @@ type Course @model @auth(rules: [
   quizzes: [Quiz] @hasMany(indexName: "byCourse", fields: ["id"])
   enrollments: [Enrollment] @hasMany(indexName: "byCourse", fields: ["id"])
   enrollmentRequests: [EnrollmentRequest] @hasMany(indexName: "byCourse", fields: ["id"])
+  notifications: [CourseNotification] @hasMany(indexName: "byCourse", fields: ["id"])
+  messages: [Message] @hasMany(indexName: "byCourse", fields: ["id"])
 }
 
 # 3. Bảng Bài giảng (File, Video)
@@ -126,3 +129,41 @@ type S3Object {
   region: String!
   key: String!
 }
+enum MessageStatus {
+  UNREAD
+  READ
+}
+
+type CourseNotification @model @auth(rules: [
+  {allow: groups, groups: ["Instructor", "Admin"], operations: [create, update, delete, read]},
+  {allow: private, provider: userPools, operations: [read]}
+]) {
+  id: ID!
+  courseID: ID! @index(name: "byCourse")
+  course: Course @belongsTo(fields: ["courseID"])
+  title: String!
+  content: String!
+  creatorID: ID!
+  creatorName: String
+}
+
+type Message @model @auth(rules: [
+  {allow: owner, ownerField: "senderID", operations: [create, read, delete]},
+  {allow: owner, ownerField: "recipientID", operations: [read, update]},
+  {allow: groups, groups: ["Admin"], operations: [read, update, delete]}
+]) {
+  id: ID!
+  senderID: ID! @index(name: "bySender")
+  recipientID: ID! @index(name: "byRecipient")
+  subject: String
+  body: String!
+  status: MessageStatus!
+  courseID: ID @index(name: "byCourse")
+  senderName: String
+  recipientName: String
+  course: Course @belongsTo(fields: ["courseID"])
+}
+
+
+
+

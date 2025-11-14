@@ -93,6 +93,7 @@ export const onCreateCourse = /* GraphQL */ `
     onCreateCourse(filter: $filter) {
       id
       title
+      deadline
       description
       instructorID
       instructor {
@@ -118,6 +119,14 @@ export const onCreateCourse = /* GraphQL */ `
         __typename
       }
       enrollmentRequests {
+        nextToken
+        __typename
+      }
+      notifications {
+        nextToken
+        __typename
+      }
+      messages {
         nextToken
         __typename
       }
@@ -132,6 +141,7 @@ export const onUpdateCourse = /* GraphQL */ `
     onUpdateCourse(filter: $filter) {
       id
       title
+      deadline
       description
       instructorID
       instructor {
@@ -157,6 +167,14 @@ export const onUpdateCourse = /* GraphQL */ `
         __typename
       }
       enrollmentRequests {
+        nextToken
+        __typename
+      }
+      notifications {
+        nextToken
+        __typename
+      }
+      messages {
         nextToken
         __typename
       }
@@ -171,6 +189,7 @@ export const onDeleteCourse = /* GraphQL */ `
     onDeleteCourse(filter: $filter) {
       id
       title
+      deadline
       description
       instructorID
       instructor {
@@ -199,6 +218,14 @@ export const onDeleteCourse = /* GraphQL */ `
         nextToken
         __typename
       }
+      notifications {
+        nextToken
+        __typename
+      }
+      messages {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -210,10 +237,12 @@ export const onCreateLecture = /* GraphQL */ `
     onCreateLecture(filter: $filter) {
       id
       title
+      deadline
       courseID
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -237,10 +266,12 @@ export const onUpdateLecture = /* GraphQL */ `
     onUpdateLecture(filter: $filter) {
       id
       title
+      deadline
       courseID
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -264,10 +295,12 @@ export const onDeleteLecture = /* GraphQL */ `
     onDeleteLecture(filter: $filter) {
       id
       title
+      deadline
       courseID
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -291,11 +324,11 @@ export const onCreateQuiz = /* GraphQL */ `
     onCreateQuiz(filter: $filter) {
       id
       title
-      deadline
       courseID
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -317,11 +350,11 @@ export const onUpdateQuiz = /* GraphQL */ `
     onUpdateQuiz(filter: $filter) {
       id
       title
-      deadline
       courseID
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -343,11 +376,11 @@ export const onDeleteQuiz = /* GraphQL */ `
     onDeleteQuiz(filter: $filter) {
       id
       title
-      deadline
       courseID
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -452,6 +485,7 @@ export const onCreateEnrollment = /* GraphQL */ `
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -486,6 +520,7 @@ export const onUpdateEnrollment = /* GraphQL */ `
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -520,6 +555,7 @@ export const onDeleteEnrollment = /* GraphQL */ `
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -546,6 +582,7 @@ export const onCreateEnrollmentRequest = /* GraphQL */ `
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -582,6 +619,7 @@ export const onUpdateEnrollmentRequest = /* GraphQL */ `
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -618,6 +656,7 @@ export const onDeleteEnrollmentRequest = /* GraphQL */ `
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -685,6 +724,195 @@ export const onDeleteSubmission = /* GraphQL */ `
       quizID
       score
       answers
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateCourseNotification = /* GraphQL */ `
+  subscription OnCreateCourseNotification(
+    $filter: ModelSubscriptionCourseNotificationFilterInput
+  ) {
+    onCreateCourseNotification(filter: $filter) {
+      id
+      courseID
+      course {
+        id
+        title
+        deadline
+        description
+        instructorID
+        createdAt
+        updatedAt
+        __typename
+      }
+      title
+      content
+      creatorID
+      creatorName
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateCourseNotification = /* GraphQL */ `
+  subscription OnUpdateCourseNotification(
+    $filter: ModelSubscriptionCourseNotificationFilterInput
+  ) {
+    onUpdateCourseNotification(filter: $filter) {
+      id
+      courseID
+      course {
+        id
+        title
+        deadline
+        description
+        instructorID
+        createdAt
+        updatedAt
+        __typename
+      }
+      title
+      content
+      creatorID
+      creatorName
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteCourseNotification = /* GraphQL */ `
+  subscription OnDeleteCourseNotification(
+    $filter: ModelSubscriptionCourseNotificationFilterInput
+  ) {
+    onDeleteCourseNotification(filter: $filter) {
+      id
+      courseID
+      course {
+        id
+        title
+        deadline
+        description
+        instructorID
+        createdAt
+        updatedAt
+        __typename
+      }
+      title
+      content
+      creatorID
+      creatorName
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateMessage = /* GraphQL */ `
+  subscription OnCreateMessage(
+    $filter: ModelSubscriptionMessageFilterInput
+    $senderID: String
+    $recipientID: String
+  ) {
+    onCreateMessage(
+      filter: $filter
+      senderID: $senderID
+      recipientID: $recipientID
+    ) {
+      id
+      senderID
+      recipientID
+      subject
+      body
+      status
+      courseID
+      senderName
+      recipientName
+      course {
+        id
+        title
+        deadline
+        description
+        instructorID
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateMessage = /* GraphQL */ `
+  subscription OnUpdateMessage(
+    $filter: ModelSubscriptionMessageFilterInput
+    $senderID: String
+    $recipientID: String
+  ) {
+    onUpdateMessage(
+      filter: $filter
+      senderID: $senderID
+      recipientID: $recipientID
+    ) {
+      id
+      senderID
+      recipientID
+      subject
+      body
+      status
+      courseID
+      senderName
+      recipientName
+      course {
+        id
+        title
+        deadline
+        description
+        instructorID
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteMessage = /* GraphQL */ `
+  subscription OnDeleteMessage(
+    $filter: ModelSubscriptionMessageFilterInput
+    $senderID: String
+    $recipientID: String
+  ) {
+    onDeleteMessage(
+      filter: $filter
+      senderID: $senderID
+      recipientID: $recipientID
+    ) {
+      id
+      senderID
+      recipientID
+      subject
+      body
+      status
+      courseID
+      senderName
+      recipientName
+      course {
+        id
+        title
+        deadline
+        description
+        instructorID
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename

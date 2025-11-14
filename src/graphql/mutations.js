@@ -96,6 +96,7 @@ export const createCourse = /* GraphQL */ `
     createCourse(input: $input, condition: $condition) {
       id
       title
+      deadline
       description
       instructorID
       instructor {
@@ -121,6 +122,14 @@ export const createCourse = /* GraphQL */ `
         __typename
       }
       enrollmentRequests {
+        nextToken
+        __typename
+      }
+      notifications {
+        nextToken
+        __typename
+      }
+      messages {
         nextToken
         __typename
       }
@@ -138,6 +147,7 @@ export const updateCourse = /* GraphQL */ `
     updateCourse(input: $input, condition: $condition) {
       id
       title
+      deadline
       description
       instructorID
       instructor {
@@ -163,6 +173,14 @@ export const updateCourse = /* GraphQL */ `
         __typename
       }
       enrollmentRequests {
+        nextToken
+        __typename
+      }
+      notifications {
+        nextToken
+        __typename
+      }
+      messages {
         nextToken
         __typename
       }
@@ -180,6 +198,7 @@ export const deleteCourse = /* GraphQL */ `
     deleteCourse(input: $input, condition: $condition) {
       id
       title
+      deadline
       description
       instructorID
       instructor {
@@ -208,6 +227,14 @@ export const deleteCourse = /* GraphQL */ `
         nextToken
         __typename
       }
+      notifications {
+        nextToken
+        __typename
+      }
+      messages {
+        nextToken
+        __typename
+      }
       createdAt
       updatedAt
       __typename
@@ -222,10 +249,12 @@ export const createLecture = /* GraphQL */ `
     createLecture(input: $input, condition: $condition) {
       id
       title
+      deadline
       courseID
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -252,10 +281,12 @@ export const updateLecture = /* GraphQL */ `
     updateLecture(input: $input, condition: $condition) {
       id
       title
+      deadline
       courseID
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -282,10 +313,12 @@ export const deleteLecture = /* GraphQL */ `
     deleteLecture(input: $input, condition: $condition) {
       id
       title
+      deadline
       courseID
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -312,11 +345,11 @@ export const createQuiz = /* GraphQL */ `
     createQuiz(input: $input, condition: $condition) {
       id
       title
-      deadline
       courseID
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -341,11 +374,11 @@ export const updateQuiz = /* GraphQL */ `
     updateQuiz(input: $input, condition: $condition) {
       id
       title
-      deadline
       courseID
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -374,6 +407,7 @@ export const deleteQuiz = /* GraphQL */ `
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -487,6 +521,7 @@ export const createEnrollment = /* GraphQL */ `
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -521,6 +556,7 @@ export const updateEnrollment = /* GraphQL */ `
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -555,6 +591,7 @@ export const deleteEnrollment = /* GraphQL */ `
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -581,6 +618,7 @@ export const createEnrollmentRequest = /* GraphQL */ `
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -617,6 +655,7 @@ export const updateEnrollmentRequest = /* GraphQL */ `
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -653,6 +692,7 @@ export const deleteEnrollmentRequest = /* GraphQL */ `
       course {
         id
         title
+        deadline
         description
         instructorID
         createdAt
@@ -720,6 +760,183 @@ export const deleteSubmission = /* GraphQL */ `
       quizID
       score
       answers
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createCourseNotification = /* GraphQL */ `
+  mutation CreateCourseNotification(
+    $input: CreateCourseNotificationInput!
+    $condition: ModelCourseNotificationConditionInput
+  ) {
+    createCourseNotification(input: $input, condition: $condition) {
+      id
+      courseID
+      course {
+        id
+        title
+        deadline
+        description
+        instructorID
+        createdAt
+        updatedAt
+        __typename
+      }
+      title
+      content
+      creatorID
+      creatorName
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateCourseNotification = /* GraphQL */ `
+  mutation UpdateCourseNotification(
+    $input: UpdateCourseNotificationInput!
+    $condition: ModelCourseNotificationConditionInput
+  ) {
+    updateCourseNotification(input: $input, condition: $condition) {
+      id
+      courseID
+      course {
+        id
+        title
+        deadline
+        description
+        instructorID
+        createdAt
+        updatedAt
+        __typename
+      }
+      title
+      content
+      creatorID
+      creatorName
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteCourseNotification = /* GraphQL */ `
+  mutation DeleteCourseNotification(
+    $input: DeleteCourseNotificationInput!
+    $condition: ModelCourseNotificationConditionInput
+  ) {
+    deleteCourseNotification(input: $input, condition: $condition) {
+      id
+      courseID
+      course {
+        id
+        title
+        deadline
+        description
+        instructorID
+        createdAt
+        updatedAt
+        __typename
+      }
+      title
+      content
+      creatorID
+      creatorName
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createMessage = /* GraphQL */ `
+  mutation CreateMessage(
+    $input: CreateMessageInput!
+    $condition: ModelMessageConditionInput
+  ) {
+    createMessage(input: $input, condition: $condition) {
+      id
+      senderID
+      recipientID
+      subject
+      body
+      status
+      courseID
+      senderName
+      recipientName
+      course {
+        id
+        title
+        deadline
+        description
+        instructorID
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateMessage = /* GraphQL */ `
+  mutation UpdateMessage(
+    $input: UpdateMessageInput!
+    $condition: ModelMessageConditionInput
+  ) {
+    updateMessage(input: $input, condition: $condition) {
+      id
+      senderID
+      recipientID
+      subject
+      body
+      status
+      courseID
+      senderName
+      recipientName
+      course {
+        id
+        title
+        deadline
+        description
+        instructorID
+        createdAt
+        updatedAt
+        __typename
+      }
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteMessage = /* GraphQL */ `
+  mutation DeleteMessage(
+    $input: DeleteMessageInput!
+    $condition: ModelMessageConditionInput
+  ) {
+    deleteMessage(input: $input, condition: $condition) {
+      id
+      senderID
+      recipientID
+      subject
+      body
+      status
+      courseID
+      senderName
+      recipientName
+      course {
+        id
+        title
+        deadline
+        description
+        instructorID
+        createdAt
+        updatedAt
+        __typename
+      }
       createdAt
       updatedAt
       __typename
