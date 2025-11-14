@@ -2,6 +2,68 @@
 
 This repository contains a role-based Learning Management System built with React 18 and AWS Amplify. The front end renders dedicated dashboards for Admin, Instructor, and Student personas, while Amplify coordinates authentication (Cognito), data access (AppSync + DynamoDB), file storage (S3), and operational Lambdas exposed through API Gateway.
 
+```mermaid
+flowchart TB
+
+%% ====================
+%% CLIENT & ENTRY LAYER
+%% ====================
+
+User[End Users<br/>(Browser/Mobile)] -->|HTTPS| Route53[Route 53]
+Route53 --> CloudFront[CloudFront CDN]
+
+%% ====================
+%% SECURITY LAYER
+%% ====================
+
+CloudFront --> WAF[AWS WAF<br/>(Managed Rules)]
+WAF --> ACM[AWS Certificate Manager]
+
+%% ====================
+%% FRONTEND LAYER
+%% ====================
+
+CloudFront --> Amplify[Amplify Hosting<br/>(S3 Static Site)]
+
+%% ====================
+%% AUTHENTICATION
+%% ====================
+
+Amplify --> Cognito[Amazon Cognito<br/>User Pool]
+
+%% ====================
+%% BACKEND LAYER
+%% ====================
+
+Amplify --> AppSync[AWS AppSync<br/>(GraphQL API)]
+Amplify --> APIGW[API Gateway<br/>(Admin REST API)]
+
+APIGW --> LambdaAdmin[Lambda Functions<br/>(Admin REST Logic)]
+LambdaAdmin --> CloudWatch[CloudWatch<br/>Logs & Metrics]
+
+%% AppSync connections
+AppSync --> DynamoDB[(DynamoDB Tables)]
+AppSync --> S3Bucket[S3 Bucket<br/>(signed URL storage)]
+
+%% Lambda Admin to services
+LambdaAdmin --> DynamoDB
+LambdaAdmin --> Cognito
+
+%% ====================
+%% CI/CD Layer
+%% ====================
+
+GitHub[GitHub Repo] --> Amplify
+
+%% ====================
+%% COST & MONITORING
+%% ====================
+
+CloudWatch --> CostExplorer[AWS Cost Explorer]
+
+
+```
+
 ## Architecture Overview
 
 ```mermaid
