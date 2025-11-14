@@ -57,12 +57,12 @@ flowchart TB
 
 ## mydatabase (sử dụng các dịch vụ AWS nào?)
 
-- **Amplify Hosting / Build**: `amplify.yml` orchestrates the Node 18 build, pushes static assets to the Amplify-managed S3 origin, và CloudFront cache SPA giúp client tải nhanh.
-- **Amazon Cognito (auth/applms74700e61)**: quản lý đăng ký qua email, nhóm quyền `Admin/Instructor/Student`, hỗ trợ MFA tùy chọn nhưng đang OFF; Lambda admin gọi API Cognito để gán nhóm và tạo user.
-- **AWS AppSync (api/applms)**: phát sinh từ `amplify/backend/api/applms/schema.graphql`, xác thực bằng Cognito tokens, map sang DynamoDB để lưu toàn bộ thực thể User/Course/Lecture/Quiz/Enrollment/... .
-- **Amazon DynamoDB**: mỗi `@model` tương ứng một bảng PAY_PER_REQUEST với GSI (`byInstructor`, `byCourse`, `byStudent`, `byQuiz`) đảm bảo truy vấn nhanh cho dashboard giảng viên/học viên.
-- **Amazon S3 (storage/s357d74f7c)**: chứa tài liệu khóa học, video, file quiz; Amplify Storage client trong frontend sinh URL ký (getUrl/uploadData) để xử lý upload/download an toàn.
-- **Amazon API Gateway + AWS Lambda**: REST API `apie63ce51c` định tuyến tới hai Lambda (`applms4426e4c8`, `applms51482c72`) để thực thi tác vụ quản trị như liệt kê user, gán group, khởi tạo tài khoản hoặc các endpoint Express tùy chỉnh.
+- **Frontend CI/CD – Amplify Hosting / Build**: `amplify.yml` orchestrates the Node 18 build, pushes static assets to the Amplify-managed S3 origin, và CloudFront cache SPA giúp client tải nhanh.
+- **Identity & Access – Amazon Cognito (auth/applms74700e61)**: quản lý đăng ký qua email, nhóm quyền `Admin/Instructor/Student`, hỗ trợ MFA tùy chọn nhưng đang OFF; Lambda admin gọi API Cognito để gán nhóm và tạo user.
+- **GraphQL Tier – AWS AppSync (api/applms)**: phát sinh từ `amplify/backend/api/applms/schema.graphql`, xác thực bằng Cognito tokens, map sang DynamoDB để lưu toàn bộ thực thể User/Course/Lecture/Quiz/Enrollment/... .
+- **Operational Data – Amazon DynamoDB**: mỗi `@model` tương ứng một bảng PAY_PER_REQUEST với GSI (`byInstructor`, `byCourse`, `byStudent`, `byQuiz`) đảm bảo truy vấn nhanh cho dashboard giảng viên/học viên.
+- **Content Storage – Amazon S3 (storage/s357d74f7c)**: chứa tài liệu khóa học, video, file quiz; Amplify Storage client trong frontend sinh URL ký (getUrl/uploadData) để xử lý upload/download an toàn.
+- **Admin Automation – Amazon API Gateway + AWS Lambda**: REST API `apie63ce51c` định tuyến tới hai Lambda (`applms4426e4c8`, `applms51482c72`) để thực thi tác vụ quản trị như liệt kê user, gán group, khởi tạo tài khoản hoặc các endpoint Express tùy chỉnh.
 
 ## Database Schema
 
