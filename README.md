@@ -63,6 +63,7 @@ flowchart TB
 - **My Data Store** – Amazon DynamoDB: mỗi `@model` tương ứng một bảng PAY_PER_REQUEST với GSI (`byInstructor`, `byCourse`, `byStudent`, `byQuiz`) đảm bảo truy vấn nhanh cho dashboard giảng viên/học viên.
 - **My Content Storage** – Amazon S3 (storage/s357d74f7c): chứa tài liệu khóa học, video, file quiz; Amplify Storage client trong frontend sinh URL ký (getUrl/uploadData) để xử lý upload/download an toàn.
 - **My Admin API** – Amazon API Gateway + AWS Lambda: REST API `apie63ce51c` định tuyến tới hai Lambda (`applms4426e4c8`, `applms51482c72`) để thực thi tác vụ quản trị như liệt kê user, gán group, khởi tạo tài khoản hoặc các endpoint Express tùy chỉnh.
+- **Custom Domain & Certificate** – Amplify Hosting map branch `main` tới `phuc.id.vn` (xem `aws amplify list-domain-associations --app-id d2kelxoxtavydi`), CloudFront tự dùng chứng chỉ TLS cấp bởi AWS Certificate Manager thông qua bản ghi xác thực `_aaad64541a864378a50759b2b31f14a7.phuc.id.vn`.
 
 ## Database Schema
 
